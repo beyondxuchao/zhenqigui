@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.tauri.app/schema/permission.json",
+  "identifier": "read-videos",
+  "description": "Read access to video and audio directories",
+  "commands": {
+    "allow": [
+      "fs:read_file",
+      "fs:read_text_file",
+      "fs:exists",
+      "fs:read_dir",
+      "fs:stat"
+    ],
+    "deny": []
+  },
+  "scope": {
+    "allow": [
+      "$VIDEO/**",
+      "$AUDIO/**",
+      "$HOME/Videos/**",
+      "$HOME/Music/**",
+      "$HOME/Downloads/**",
+      "$HOME/Desktop/**",
+      "C:\\Users\\**"
+    ]
+  }
+}
