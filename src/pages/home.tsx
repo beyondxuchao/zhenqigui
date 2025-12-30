@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, CSSProperties } from 'react';
-import { Empty, Button, Card, Tag, Rate, Tooltip, Select, Space, Modal, Badge, Skeleton, App } from 'antd';
+import { Empty, Button, Card, Tag, Rate, Tooltip, Select, Space, Badge, Skeleton, App } from 'antd';
 import { PlusOutlined, EditOutlined, FolderOpenOutlined, DeleteOutlined, ExclamationCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FixedSizeGrid as Grid } from 'react-window';
@@ -101,7 +101,7 @@ const Home: React.FC = () => {
   const actorNameParam = searchParams.get('actorName');
   const genreParam = searchParams.get('genre');
   
-  const { searchQuery, setSearchQuery } = useApp();
+  const { searchQuery } = useApp();
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
@@ -249,7 +249,7 @@ const Home: React.FC = () => {
   };
 
   const handleDelete = (id: number) => {
-    Modal.confirm({
+    modal.confirm({
       title: '确认删除',
       icon: <ExclamationCircleOutlined />,
       content: '确定要删除这部影视吗？此操作不可恢复。',

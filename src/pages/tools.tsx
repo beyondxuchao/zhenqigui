@@ -34,7 +34,8 @@ const Tools: React.FC = () => {
     const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
     const navigate = useNavigate();
 
-    const tools: ToolItem[] = [
+    // Memoize tools array to prevent unnecessary re-registrations
+    const tools: ToolItem[] = React.useMemo(() => [
         {
             id: 'renamer',
             title: '批量重命名',
@@ -83,7 +84,7 @@ const Tools: React.FC = () => {
             component: <AudioProcessor />,
             width: 1000
         }
-    ];
+    ], []);
 
     const handleToolClick = (tool: ToolItem) => {
         if (tool.path) {
@@ -110,6 +111,7 @@ const Tools: React.FC = () => {
                 console.log(`Drag drop at: ${x}, ${y} (Physical: ${payload.position.x}, ${payload.position.y})`);
 
                 // Iterate over registered cards to check if drop occurred on one of them
+                let droppedOnTool = false;
                 for (const [id, element] of cardRefs.current.entries()) {
                     const rect = element.getBoundingClientRect();
                     // Check if point (x, y) is within the rectangle
@@ -119,9 +121,14 @@ const Tools: React.FC = () => {
                             console.log('Dropped on tool:', tool.title);
                             setDroppedFile(payload.paths[0]);
                             setActiveTool(tool);
+                            droppedOnTool = true;
                         }
                         break;
                     }
+                }
+                
+                if (!droppedOnTool) {
+                    console.log('Drop position not matching any tool card');
                 }
             }
         });
@@ -129,7 +136,7 @@ const Tools: React.FC = () => {
         return () => {
             unlistenPromise.then(unlisten => unlisten());
         };
-    }, []); // Removed empty dependency array to ensure tools access is correct? No, tools is defined inside component.
+    }, [tools]); // Add tools to dependency array to capture current instances
     // Wait, tools is defined inside the component on every render.
     // However, the effect runs only once on mount. 
     // The `tools` array inside the effect will be the one from the initial render.
@@ -182,10 +189,24 @@ const Tools: React.FC = () => {
     
     // Let's try to use `setActiveTool` directly in the loop as shown in the new_str.
     
-    // Also, I will fix the Ant Design warning in `audioprocessor.tsx`.
+    // Also, I will fix the Ant Design warning in audioprocessor.tsx.
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
 
     return (
-        <div>
+        <div 
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            style={{ minHeight: '100vh' }}
+        >
             <Row gutter={[16, 16]}>
                 {tools.map(tool => (
                     <Col xs={24} sm={12} md={8} lg={6} xl={4} key={tool.id}>

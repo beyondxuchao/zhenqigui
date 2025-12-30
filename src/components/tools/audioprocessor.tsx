@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Form, Input, InputNumber, Slider, message, Space, Card, Row, Col, Modal, Popconfirm, Divider } from 'antd';
+import { Button, Form, Input, InputNumber, Slider, App, Space, Card, Row, Col, Modal, Popconfirm, Divider } from 'antd';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { listen } from '@tauri-apps/api/event';
 import { SaveOutlined, DeleteOutlined, ThunderboltOutlined, FolderOpenOutlined } from '@ant-design/icons';
@@ -10,6 +10,7 @@ interface AudioProcessorProps {
 }
 
 const AudioProcessor: React.FC<AudioProcessorProps> = ({ initialFile }) => {
+    const { message } = App.useApp();
     const [inputFile, setInputFile] = useState<string>(initialFile || '');
     const [presets, setPresets] = useState<AudioPreset[]>([]);
     const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);

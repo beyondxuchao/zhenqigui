@@ -1,38 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Card, Button, Table, Tag, Space, Badge, Input, Modal, Progress, message, Empty } from 'antd';
-import { SearchOutlined, RocketOutlined, CheckCircleOutlined, LinkOutlined } from '@ant-design/icons';
+import { Typography, Button, Table, Tag, Space, Badge, Input, Empty, App } from 'antd';
+import { SearchOutlined, LinkOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getMovies, scanDirectories, addMaterialToMovie, getConfig } from '../services/api';
-import { Movie, MatchedFile, Material } from '../types';
+import { getMovies } from '../services/api';
+import { Movie } from '../types';
 import MatchDetail from '../components/matchdetail';
 import { formatFileSize } from '../utils/format';
 
 const { Text } = Typography;
 
 const MaterialMatch: React.FC = () => {
+  const { message } = App.useApp();
   const { id } = useParams();
   const navigate = useNavigate();
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
 
-  // Folder Config State
-  const [folderConfig, setFolderConfig] = useState<{
-    default: string[];
-    source: string[];
-    finished: string[];
-  }>({ default: [], source: [], finished: [] });
-
   useEffect(() => {
     if (!id) {
       loadMovies();
-      getConfig().then(config => {
-        setFolderConfig({
-            default: config.default_monitor_folders || [],
-            source: config.monitor_folders_source || [],
-            finished: config.monitor_folders_finished || []
-        });
-      });
     }
   }, [id]);
 

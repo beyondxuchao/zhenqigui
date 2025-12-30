@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Button, message, List, Space, theme, Form, Input, Progress, Steps } from 'antd';
+import { Card, Typography, Button, App, List, Space, theme, Form, Input, Progress, Steps } from 'antd';
 import { InboxOutlined, FileTextOutlined, DownloadOutlined, FolderOpenOutlined, CheckCircleOutlined, SwapOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { listen } from '@tauri-apps/api/event';
 import { extractSubtitles, openFileWithPlayer } from '../../services/api';
@@ -13,6 +13,7 @@ interface SubtitleToolProps {
 
 const SubtitleTool: React.FC<SubtitleToolProps> = ({ initialFile }) => {
     const { token } = theme.useToken();
+    const { message } = App.useApp();
     
     // Initialize state
     const initFileState = () => {

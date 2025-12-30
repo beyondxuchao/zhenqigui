@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Button, message, Radio, Space, theme, Form, Input, Progress, Steps, Spin } from 'antd';
+import { Card, Typography, Button, App, Radio, Space, theme, Form, Input, Progress, Steps, Spin } from 'antd';
 import { InboxOutlined, AudioOutlined, FileOutlined, FolderOpenOutlined, CheckCircleOutlined, SwapOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { listen } from '@tauri-apps/api/event';
 import { extractAudio, openFileWithPlayer } from '../../services/api';
@@ -13,6 +13,7 @@ interface AudioExtractorProps {
 
 const AudioExtractor: React.FC<AudioExtractorProps> = ({ initialFile }) => {
     const { token } = theme.useToken();
+    const { message } = App.useApp();
     
     // Initialize state
     const initFileState = () => {
@@ -211,7 +212,10 @@ const AudioExtractor: React.FC<AudioExtractorProps> = ({ initialFile }) => {
                     </Form.Item>
 
                     <Form.Item label="输出文件名 (不含扩展名)">
-                        <Input value={outputFilename} onChange={e => setOutputFilename(e.target.value)} addonAfter={`.${format}`} />
+                        <Space.Compact style={{ width: '100%' }}>
+                            <Input value={outputFilename} onChange={e => setOutputFilename(e.target.value)} />
+                            <Button type="default" disabled style={{ color: token.colorText, cursor: 'default', backgroundColor: token.colorFillAlter }}>.{format}</Button>
+                        </Space.Compact>
                     </Form.Item>
 
                     <Form.Item label="输出格式">

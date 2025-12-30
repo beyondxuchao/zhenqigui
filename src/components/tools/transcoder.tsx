@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Radio, Button, message, Spin, Space, theme, Input, Form, Progress, Steps } from 'antd';
+import { Card, Typography, Radio, Button, App, Spin, Space, theme, Input, Form, Progress, Steps } from 'antd';
 import { InboxOutlined, SwapOutlined, FileOutlined, FolderOpenOutlined, CheckCircleOutlined, SyncOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { listen } from '@tauri-apps/api/event';
 import { convertVideo, openFileWithPlayer } from '../../services/api';
@@ -19,6 +19,7 @@ interface TranscoderProps {
 
 const Transcoder: React.FC<TranscoderProps> = ({ initialFile }) => {
     const { token } = theme.useToken();
+    const { message } = App.useApp();
     
     // Initialize state from initialFile if present
     const initFileState = () => {

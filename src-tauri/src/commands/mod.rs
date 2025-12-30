@@ -930,7 +930,7 @@ pub async fn open_directory(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn fetch_douban_subject(url_or_id: String) -> Result<Movie, String> {
+pub async fn fetch_douban_subject(url_or_id: String, is_tv: Option<bool>) -> Result<Movie, String> {
     let mut douban_id = url_or_id.clone();
     
     // Check if it is a URL
@@ -945,8 +945,12 @@ pub async fn fetch_douban_subject(url_or_id: String) -> Result<Movie, String> {
 
     // Use the API from wp-douban (fatesinger.com)
     // Reference: wp-douban-4.4.3/src/functions.php fetch_subject
-    let url = format!("https://fatesinger.com/dbapi/movie/{}?ck=xgtY&for_mobile=1", douban_id);
+    // Use /tv/ endpoint if is_tv is explicitly true, otherwise default to /movie/ (which handles redirects)
+    let endpoint = if is_tv.unwrap_or(false) { "tv" } else { "movie" };
+    let url = format!("https://fatesinger.com/dbapi/{}/{}?ck=xgtY&for_mobile=1", endpoint, douban_id);
     
+    println!("Fetching Douban subject: {}", url);
+
     let client = reqwest::Client::builder()
         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
         .build()

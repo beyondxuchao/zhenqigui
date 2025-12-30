@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Card, Button, InputNumber, Slider, Table, Tag, Space, Empty, Breadcrumb, Row, Col, message, Tooltip, Modal, Input } from 'antd';
+import { Typography, Card, Button, InputNumber, Slider, Table, Tag, Space, Empty, Breadcrumb, Row, Col, Tooltip, Modal, Input, App, theme } from 'antd';
 import { ReloadOutlined, LinkOutlined, FolderAddOutlined, PlayCircleOutlined, DragOutlined, FolderOpenOutlined, EditOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getMovieDetails, scanDirectories, addMaterialToMovie, getConfig, openFileWithPlayer, updateMovie, openDirectory, renameFileDirect } from '../services/api';
@@ -18,6 +18,8 @@ interface MatchDetailProps {
 }
 
 const MatchDetail: React.FC<MatchDetailProps> = ({ movieId, onBack }) => {
+  const { token } = theme.useToken();
+  const { message } = App.useApp();
   const { id } = useParams();
   const navigate = useNavigate();
   const targetId = movieId || (id ? Number(id) : undefined);
@@ -476,12 +478,14 @@ const MatchDetail: React.FC<MatchDetailProps> = ({ movieId, onBack }) => {
                     onCancel={() => setIsRenamingModalVisible(false)}
                     destroyOnHidden
                 >
-                    <Input 
-                        value={newFileName} 
-                        onChange={e => setNewFileName(e.target.value)} 
-                        placeholder="请输入新文件名"
-                        addonAfter={fileExtension}
-                    />
+                    <Space.Compact style={{ width: '100%' }}>
+                        <Input 
+                            value={newFileName} 
+                            onChange={e => setNewFileName(e.target.value)} 
+                            placeholder="请输入新文件名" 
+                        />
+                        <Button type="default" disabled style={{ color: token.colorText, cursor: 'default', backgroundColor: token.colorFillAlter }}>{fileExtension}</Button>
+                    </Space.Compact>
                     <div style={{ marginTop: 8, color: '#999', fontSize: '12px' }}>
                         原文件名: {renamingFile?.name}
                     </div>

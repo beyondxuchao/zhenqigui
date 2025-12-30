@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Modal, Form, Input, DatePicker, Rate, message, Select } from 'antd';
+import { Modal, Form, Input, DatePicker, Rate, Select, App } from 'antd';
 import dayjs from 'dayjs';
 import { Movie } from '../types';
 import { updateMovie } from '../services/api';
@@ -13,6 +13,7 @@ interface MovieEditModalProps {
 
 const MovieEditModal: React.FC<MovieEditModalProps> = ({ visible, movie, onCancel, onSuccess }) => {
   const [form] = Form.useForm();
+  const { message } = App.useApp();
 
   useEffect(() => {
     if (visible && movie) {

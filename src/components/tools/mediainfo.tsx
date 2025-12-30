@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Button, message, Descriptions, Tabs, Spin, theme } from 'antd';
+import { Card, Typography, Button, App, Descriptions, Tabs, Spin, theme } from 'antd';
 import { InboxOutlined, FileOutlined, ReloadOutlined } from '@ant-design/icons';
 import { listen } from '@tauri-apps/api/event';
 import { getMediaInfo, checkFfmpeg } from '../../services/api';
@@ -13,6 +13,7 @@ interface MediaInfoProps {
 
 const MediaInfo: React.FC<MediaInfoProps> = ({ initialFile }) => {
     const { token } = theme.useToken();
+    const { message } = App.useApp();
     const [info, setInfo] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [ffmpegReady, setFfmpegReady] = useState(false);
@@ -173,8 +174,9 @@ const MediaInfo: React.FC<MediaInfoProps> = ({ initialFile }) => {
                     </div>
 
                     {loading ? (
-                        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                            <Spin tip="正在分析媒体信息..." size="large" />
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 16 }}>
+                            <Spin size="large" />
+                            <Text type="secondary">正在分析媒体信息...</Text>
                         </div>
                     ) : (
                         <div style={{ flex: 1, overflow: 'auto', paddingRight: 8 }}>

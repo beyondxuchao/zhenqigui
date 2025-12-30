@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Table, Button, message, Badge, Space, Input, Card, Radio, Checkbox } from 'antd';
+import { Typography, Table, Button, Badge, Space, Input, Card, Radio, Checkbox, Flex, App } from 'antd';
 import { FileSyncOutlined, FolderOpenOutlined, InboxOutlined, DeleteOutlined } from '@ant-design/icons';
 import { open } from '@tauri-apps/plugin-dialog';
 import { listen } from '@tauri-apps/api/event';
@@ -23,6 +23,7 @@ interface FileRenamerProps {
 }
 
 const FileRenamer: React.FC<FileRenamerProps> = ({ initialFile }) => {
+    const { message } = App.useApp();
     const [files, setFiles] = useState<RenameItem[]>([]);
     const [loading, setLoading] = useState(false);
     
@@ -335,7 +336,7 @@ const FileRenamer: React.FC<FileRenamerProps> = ({ initialFile }) => {
                 </div>
                 
                 <Card size="small" title="批量操作规则">
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <Flex vertical style={{ width: '100%' }}>
                         <Radio.Group value={mode} onChange={e => setMode(e.target.value)}>
                             <Radio.Button value="replace">查找替换</Radio.Button>
                             <Radio.Button value="remove">删除字符</Radio.Button>
@@ -375,7 +376,7 @@ const FileRenamer: React.FC<FileRenamerProps> = ({ initialFile }) => {
                                 </Space>
                             )}
                         </div>
-                    </Space>
+                    </Flex>
                 </Card>
                 
                 <div style={{ marginTop: 8, paddingLeft: 4 }}>

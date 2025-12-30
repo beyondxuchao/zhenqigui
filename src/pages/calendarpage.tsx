@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, message, Spin, Tooltip, Tag, Segmented, Timeline } from 'antd';
+import { Calendar, Spin, Tooltip, Tag, Segmented, Timeline, App } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { Solar } from 'lunar-javascript';
@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { CalendarOutlined, BarsOutlined } from '@ant-design/icons';
 
 const CalendarPage: React.FC = () => {
+  const { message } = App.useApp();
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
@@ -257,10 +258,9 @@ const CalendarPage: React.FC = () => {
         ) : (
             <div style={{ marginTop: 20, padding: '0 20px' }}>
                 <Timeline
-                    mode="left"
                     items={timelineItems}
                 />
-                {timelineItems.length === 0 && <div style={{ textAlign: 'center', color: '#999' }}>暂无时间线数据</div>}
+                {timelineItems.length === 0 && <div style={{ textAlign: 'center', color: '#999' }}>暂无观影记录</div>}
             </div>
         )}
       </Spin>

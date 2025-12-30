@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Typography, Card, Button, Table, Tag, Space, Breadcrumb, Statistic, Row, Col, Tabs, message, Spin, Modal, Tooltip, Input } from 'antd';
-import { EditOutlined, DeleteOutlined, DisconnectOutlined, PlayCircleOutlined, ExclamationCircleOutlined, DragOutlined, FolderOpenOutlined, LinkOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Typography, Card, Button, Table, Tag, Space, Breadcrumb, Statistic, Row, Col, Tabs, App, Spin, Tooltip, Input, Modal } from 'antd';
+import { EditOutlined, DeleteOutlined, CloseOutlined, PlayCircleOutlined, ExclamationCircleOutlined, DragOutlined, FolderOpenOutlined, LinkOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getMovieDetails, removeMaterialFromMovie, openFileWithPlayer, deleteMovie, updateMovie, getTmdbDetails, openDirectory, renameFileDirect, refreshMovieMaterials } from '../services/api';
 import { Movie, Material, Person } from '../types';
@@ -15,8 +15,10 @@ const { Title, Text } = Typography;
 const MovieDetails: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { message, modal } = App.useApp();
   const [movie, setMovie] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshingMaterials, setRefreshingMaterials] = useState(false);
   const [editing, setEditing] = useState(false);
   const [renamingFile, setRenamingFile] = useState<Material | null>(null);
   const [newFileName, setNewFileName] = useState('');
@@ -112,20 +114,20 @@ const MovieDetails: React.FC = () => {
   const handleRefreshMaterials = async () => {
       if (!id) return;
       try {
-          setLoading(true);
+          setRefreshingMaterials(true);
           await refreshMovieMaterials(parseInt(id));
           await fetchDetails();
           message.success('素材已刷新');
       } catch (e) {
           message.error('刷新素材失败');
       } finally {
-          setLoading(false);
+          setRefreshingMaterials(false);
       }
   };
 
   const handleDeleteMovie = () => {
     if (!movie) return;
-    Modal.confirm({
+    modal.confirm({
         title: '确认删除',
         icon: <ExclamationCircleOutlined />,
         content: '确定要删除这部影视吗？此操作不可恢复。',
@@ -323,9 +325,9 @@ const MovieDetails: React.FC = () => {
                 
                 {movie.actors && movie.actors.length > 0 && (
                     <div style={{ marginTop: 24, overflowX: 'auto', display: 'flex', gap: 16, paddingBottom: 8 }}>
-                        {movie.actors.map(person => (
+                        {movie.actors.map((person, index) => (
                             <div 
-                                key={person.id} 
+                                key={`${person.id}-${index}`} 
                                 style={{ flex: '0 0 auto', width: 80, textAlign: 'center', cursor: 'pointer' }}
                                 onClick={() => navigate(`/?actorId=${person.id}&actorName=${encodeURIComponent(person.name)}`)}
                             >
@@ -362,37 +364,39 @@ const MovieDetails: React.FC = () => {
         </Row>
       </Card>
 
-      <Card title="关联素材" extra={<Button type="link" icon={<ReloadOutlined />} onClick={handleRefreshMaterials}>刷新素材</Button>} style={{ marginTop: 24 }}>
-        <Tabs 
-            defaultActiveKey="video"
+      <Card title="关联素材" extra={<Button type="link" icon={<ReloadOutlined />} loading={refreshingMaterials} onClick={handleRefreshMaterials}>刷新素材</Button>} style={{ marginTop: 24 }}>
+        <Spin spinning={refreshingMaterials}>
+            <Tabs 
+                defaultActiveKey="video"
             items={[
                 {
                     key: 'video',
                     label: '视频',
-                    children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'video')} columns={columns} rowKey="id" onRow={onRow} />
+                    children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'video')} columns={columns} rowKey="path" onRow={onRow} />
                 },
                 {
                     key: 'audio',
                     label: '音频',
-                    children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'audio')} columns={columns} rowKey="id" onRow={onRow} />
+                    children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'audio')} columns={columns} rowKey="path" onRow={onRow} />
                 },
                 {
                     key: 'image',
                     label: '图片',
-                    children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'image')} columns={columns} rowKey="id" onRow={onRow} />
+                    children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'image')} columns={columns} rowKey="path" onRow={onRow} />
                 },
                 {
                     key: 'doc',
                     label: '文档',
-                    children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'doc')} columns={columns} rowKey="id" onRow={onRow} />
+                    children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'doc')} columns={columns} rowKey="path" onRow={onRow} />
                 },
                 {
                     key: 'other',
                     label: '其他',
-                    children: <Table dataSource={materials.filter((m: Material) => !['video', 'audio', 'image', 'doc'].includes(m.file_type))} columns={columns} rowKey="id" onRow={onRow} />
+                    children: <Table dataSource={materials.filter((m: Material) => !['video', 'audio', 'image', 'doc'].includes(m.file_type))} columns={columns} rowKey="path" onRow={onRow} />
                 }
             ]}
         />
+        </Spin>
       </Card>
 
       <MovieEditModal
@@ -412,12 +416,14 @@ const MovieDetails: React.FC = () => {
           onCancel={() => setIsRenamingModalVisible(false)}
           destroyOnHidden
       >
-          <Input 
-              value={newFileName} 
-              onChange={(e) => setNewFileName(e.target.value)} 
-              placeholder="请输入新文件名"
-              addonAfter={fileExtension}
-          />
+          <Space.Compact style={{ width: '100%' }}>
+              <Input 
+                  value={newFileName} 
+                  onChange={(e) => setNewFileName(e.target.value)} 
+                  placeholder="请输入新文件名"
+              />
+              <Button type="default" disabled style={{ color: 'rgba(0, 0, 0, 0.45)', cursor: 'default', backgroundColor: '#fafafa', borderColor: '#d9d9d9' }}>{fileExtension}</Button>
+          </Space.Compact>
           <div style={{ marginTop: 8, color: '#999', fontSize: '12px' }}>
               原文件名: {renamingFile?.name}
           </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Tabs, Form, Input, Slider, Radio, Button, Alert, message, Space, Switch, Descriptions, Divider, List, Card, Tag, Popconfirm, Modal, type TabsProps } from 'antd';
+import { Tabs, Form, Input, Slider, Radio, Button, Alert, Flex, Space, Switch, Descriptions, Divider, Card, Tag, Popconfirm, Modal, App, type TabsProps } from 'antd';
 import { 
     SaveOutlined, 
     UploadOutlined, 
@@ -21,6 +21,8 @@ import { useApp } from '../context/appcontext';
 
 const Settings: React.FC = () => {
   const [form] = Form.useForm();
+  const { message } = App.useApp();
+  const primaryColor = Form.useWatch('primary_color', form);
   const [testing, setTesting] = useState(false);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const { setTheme, setPrimaryColor } = useApp();
@@ -73,9 +75,10 @@ const Settings: React.FC = () => {
         match_threshold: config.match_threshold ? config.match_threshold * 100 : 80,
         theme: config.theme || 'light',
         primary_color: config.primary_color || '#1677ff',
-        save_images_locally: config.save_images_locally ?? false,
-        image_save_path: config.image_save_path || ''
-      };
+        save_images_locally: config.save_images_locally ?? true,
+            image_save_path: config.image_save_path || '',
+            tmdb_api_key: config.tmdb_api_key || ''
+        };
       setMonitorFolders(config.default_monitor_folders || []);
       setMonitorFoldersSource(config.monitor_folders_source || []);
       setMonitorFoldersFinished(config.monitor_folders_finished || []);
@@ -90,9 +93,12 @@ const Settings: React.FC = () => {
   const performSave = async (values: any) => {
     try {
       setSaveStatus('saving');
-      const config: AppConfig = {
+      
+      // Calculate final config
+      const mergedConfig: AppConfig = {
         ...baseConfig,
         ...values,
+        save_images_locally: values.save_images_locally !== undefined ? values.save_images_locally : (baseConfig?.save_images_locally ?? true),
         match_threshold: values.match_threshold ? values.match_threshold / 100 : (baseConfig?.match_threshold || 0.8),
         image_save_path: values.image_save_path !== undefined ? (values.image_save_path || null) : (baseConfig?.image_save_path || null),
         default_monitor_folders: monitorFolders,
@@ -101,9 +107,9 @@ const Settings: React.FC = () => {
       };
       
       // Update baseConfig to reflect latest saved state
-      setBaseConfig(config);
+      setBaseConfig(mergedConfig);
       
-      await saveConfig(config);
+      await saveConfig(mergedConfig);
       setSaveStatus('saved');
     } catch (error) {
       console.error(error);
@@ -120,6 +126,9 @@ const Settings: React.FC = () => {
       if (changedValues.primary_color) {
           setPrimaryColor(changedValues.primary_color);
       }
+
+      // Do not save if config is not loaded yet to prevent overwriting with empty values
+      if (!configLoaded) return;
 
       // Debounce save
       if (saveTimeoutRef.current) {
@@ -400,7 +409,7 @@ const Settings: React.FC = () => {
         form={form}
         layout="vertical"
         onValuesChange={handleValuesChange}
-        preserve={false}
+        preserve={true}
       >
         <Tabs 
             style={{ width: '100%' }}
@@ -412,7 +421,7 @@ const Settings: React.FC = () => {
                 key: 'general',
                 children: (
                     <div style={{ paddingLeft: 16 }}>
-                    <Space direction="vertical" style={{ width: '100%' }} size="large">
+                    <Flex vertical style={{ width: '100%' }} gap="large">
                         <Card title="界面外观" size="small" variant="borderless">
                             <Form.Item label="主题模式" name="theme" style={{ marginBottom: 16 }}>
                                 <Radio.Group buttonStyle="solid">
@@ -457,7 +466,7 @@ const Settings: React.FC = () => {
                                                 Let's use a simple div inside or trust AntD Radio. 
                                                 Actually, Radio value binding is easier.
                                             */}
-                                           {form.getFieldValue('primary_color') === c.color && <CheckCircleOutlined style={{ color: 'white', fontSize: 16 }} />}
+                                           {primaryColor === c.color && <CheckCircleOutlined style={{ color: 'white', fontSize: 16 }} />}
                                         </Radio.Button>
                                     ))}
                                 </Radio.Group>
@@ -471,7 +480,7 @@ const Settings: React.FC = () => {
                                 <Descriptions.Item label="构建环境">Tauri v2 + React 19</Descriptions.Item>
                             </Descriptions>
                         </Card>
-                    </Space>
+                    </Flex>
                     </div>
                 )
             },
@@ -480,10 +489,10 @@ const Settings: React.FC = () => {
                 key: 'player',
                 children: (
                     <div style={{ paddingLeft: 16 }}>
-                    <Space direction="vertical" style={{ width: '100%' }} size="large">
+                    <Flex vertical style={{ width: '100%' }} gap="large">
                         <Card title="FFmpeg 设置" size="small" variant="borderless">
                              <Alert 
-                                message="FFmpeg 是处理音视频的核心组件" 
+                                title="FFmpeg 是处理音视频的核心组件" 
                                 description="如果您未安装 FFmpeg，或者应用内置的 FFmpeg 无法正常工作，请在此指定您本地安装的 FFmpeg 可执行文件路径（例如 ffmpeg.exe）。" 
                                 type="info" 
                                 showIcon 
@@ -539,7 +548,7 @@ const Settings: React.FC = () => {
                                 </Space.Compact>
                             </Form.Item>
                         </Card>
-                    </Space>
+                    </Flex>
                     </div>
                 )
             },
@@ -548,7 +557,7 @@ const Settings: React.FC = () => {
                 key: 'scraper',
                 children: (
                     <div style={{ paddingLeft: 16 }}>
-                    <Space direction="vertical" style={{ width: '100%' }} size="large">
+                    <Flex vertical style={{ width: '100%' }} gap="large">
                         <Card title="TMDB 设置" size="small">
                             <Form.Item label="API Key" name="tmdb_api_key" extra="用于拉取影视元数据，请前往 TMDB 官网申请">
                                 <Input.Password placeholder="请输入 API Key" />
@@ -577,75 +586,72 @@ const Settings: React.FC = () => {
                             </Form.Item>
                             
                             <Form.Item label="原片监控文件夹 (Source)" extra="用于存放原始拍摄素材或未剪辑的视频文件">
-                                <List
-                                    size="small"
-                                    bordered
-                                    dataSource={monitorFoldersSource}
-                                    renderItem={(item: string) => (
-                                        <List.Item
-                                            actions={[
-                                                <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveMonitorFolderSource(item)} />
-                                            ]}
-                                        >
-                                            <FolderOpenOutlined style={{ marginRight: 8, color: '#faad14' }} />
-                                            <span style={{ wordBreak: 'break-all' }}>{item}</span>
-                                        </List.Item>
+                                <div style={{ border: '1px solid #d9d9d9', borderRadius: 8 }}>
+                                    {monitorFoldersSource.map((item) => (
+                                        <div key={item} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
+                                                <FolderOpenOutlined style={{ marginRight: 8, color: '#faad14', flexShrink: 0 }} />
+                                                <span style={{ wordBreak: 'break-all' }}>{item}</span>
+                                            </div>
+                                            <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveMonitorFolderSource(item)} />
+                                        </div>
+                                    ))}
+                                    {monitorFoldersSource.length === 0 && (
+                                        <div style={{ padding: '16px', textAlign: 'center', color: 'rgba(0,0,0,0.45)', borderBottom: '1px solid #f0f0f0' }}>暂无数据</div>
                                     )}
-                                    footer={
+                                    <div style={{ padding: '8px 16px', background: '#fafafa' }}>
                                         <Button type="dashed" onClick={handleAddMonitorFolderSource} block icon={<FolderAddOutlined />}>
                                             添加原片文件夹
                                         </Button>
-                                    }
-                                />
+                                    </div>
+                                </div>
                             </Form.Item>
 
                             <Form.Item label="成片监控文件夹 (Finished)" extra="用于存放已经剪辑完成、导出的成品视频文件">
-                                <List
-                                    size="small"
-                                    bordered
-                                    dataSource={monitorFoldersFinished}
-                                    renderItem={(item: string) => (
-                                        <List.Item
-                                            actions={[
-                                                <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveMonitorFolderFinished(item)} />
-                                            ]}
-                                        >
-                                            <FolderOpenOutlined style={{ marginRight: 8, color: '#52c41a' }} />
-                                            <span style={{ wordBreak: 'break-all' }}>{item}</span>
-                                        </List.Item>
+                                <div style={{ border: '1px solid #d9d9d9', borderRadius: 8 }}>
+                                    {monitorFoldersFinished.map((item) => (
+                                        <div key={item} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
+                                                <FolderOpenOutlined style={{ marginRight: 8, color: '#52c41a', flexShrink: 0 }} />
+                                                <span style={{ wordBreak: 'break-all' }}>{item}</span>
+                                            </div>
+                                            <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveMonitorFolderFinished(item)} />
+                                        </div>
+                                    ))}
+                                    {monitorFoldersFinished.length === 0 && (
+                                        <div style={{ padding: '16px', textAlign: 'center', color: 'rgba(0,0,0,0.45)', borderBottom: '1px solid #f0f0f0' }}>暂无数据</div>
                                     )}
-                                    footer={
+                                    <div style={{ padding: '8px 16px', background: '#fafafa' }}>
                                         <Button type="dashed" onClick={handleAddMonitorFolderFinished} block icon={<FolderAddOutlined />}>
                                             添加成片文件夹
                                         </Button>
-                                    }
-                                />
+                                    </div>
+                                </div>
                             </Form.Item>
                             
                             <Form.Item label="通用监控文件夹" extra="这些文件夹将自动在“素材匹配”页面加载，无需每次重复选择">
-                                <List
-                                    size="small"
-                                    bordered
-                                    dataSource={monitorFolders}
-                                    renderItem={(item: string) => (
-                                        <List.Item
-                                            actions={[
-                                                <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveMonitorFolder(item)} />
-                                            ]}
-                                        >
-                                            <FolderOpenOutlined style={{ marginRight: 8, color: '#1890ff' }} />
-                                            <span style={{ wordBreak: 'break-all' }}>{item}</span>
-                                        </List.Item>
+                                <div style={{ border: '1px solid #d9d9d9', borderRadius: 8 }}>
+                                    {monitorFolders.map((item) => (
+                                        <div key={item} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
+                                                <FolderOpenOutlined style={{ marginRight: 8, color: '#1890ff', flexShrink: 0 }} />
+                                                <span style={{ wordBreak: 'break-all' }}>{item}</span>
+                                            </div>
+                                            <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveMonitorFolder(item)} />
+                                        </div>
+                                    ))}
+                                    {monitorFolders.length === 0 && (
+                                        <div style={{ padding: '16px', textAlign: 'center', color: 'rgba(0,0,0,0.45)', borderBottom: '1px solid #f0f0f0' }}>暂无数据</div>
                                     )}
-                                    footer={
+                                    <div style={{ padding: '8px 16px', background: '#fafafa' }}>
                                         <Button type="dashed" onClick={handleAddMonitorFolder} block icon={<FolderAddOutlined />}>
                                             添加监控文件夹
                                         </Button>
-                                    }
-                                />
+                                    </div>
+                                </div>
                             </Form.Item>
                         </Card>
-                    </Space>
+                    </Flex>
                     </div>
                 )
             },
@@ -654,10 +660,15 @@ const Settings: React.FC = () => {
                 key: 'storage',
                 children: (
                       <div style={{ paddingLeft: 16 }}>
-                      <Space direction="vertical" style={{ width: '100%' }} size="large">
+                      <Flex vertical style={{ width: '100%' }} gap="large">
                         <Card title="图片存储" size="small">
-                            <Form.Item name="save_images_locally" valuePropName="checked" style={{ marginBottom: 12 }}>
-                                <Switch checkedChildren="保存图片到本地" unCheckedChildren="使用在线图片链接" />
+                            <Form.Item 
+                                name="save_images_locally" 
+                                label="是否开启本地存储图片"
+                                valuePropName="checked" 
+                                style={{ marginBottom: 12 }}
+                            >
+                                <Switch />
                             </Form.Item>
                             
                             <Form.Item 
@@ -667,7 +678,7 @@ const Settings: React.FC = () => {
                                 {({ getFieldValue }) => 
                                     getFieldValue('save_images_locally') ? (
                                         <Form.Item 
-                                            label="自定义图片保存路径" 
+                                            label="图片存放地址" 
                                             extra="留空则使用默认路径"
                                         >
                                             <Space.Compact style={{ width: '100%' }}>
@@ -694,7 +705,7 @@ const Settings: React.FC = () => {
                                     <Button onClick={handleSetDataDirectory}>更改...</Button>
                                 </Space.Compact>
                                 <div style={{ marginTop: 8 }}>
-                                     <Alert type="warning" showIcon message="更改目录后，现有数据将迁移至新位置。应用需要重启才能生效。" />
+                                     <Alert type="warning" showIcon title="更改目录后，现有数据将迁移至新位置。应用需要重启才能生效。" />
                                 </div>
                             </Form.Item>
                             <Divider />
@@ -736,7 +747,7 @@ const Settings: React.FC = () => {
                                 }
                             />
                         </Card>
-                     </Space>
+                     </Flex>
                      </div>
                 )
             }
@@ -750,19 +761,21 @@ const Settings: React.FC = () => {
           onCancel={() => setPlayerModalVisible(false)}
           footer={null}
       >
-          <List
-              dataSource={detectedPlayers}
-              renderItem={(item) => (
-                  <List.Item
-                      actions={[<Button type="primary" size="small" onClick={() => confirmSelectPlayer(item.path)}>选择</Button>]}
-                  >
-                      <List.Item.Meta
-                          title={item.name}
-                          description={item.path}
-                      />
-                  </List.Item>
+          <div style={{ border: '1px solid #f0f0f0', borderRadius: 8 }}>
+              {detectedPlayers.length > 0 ? (
+                  detectedPlayers.map((item, i) => (
+                      <div key={item.path} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderBottom: i === detectedPlayers.length - 1 ? 'none' : '1px solid #f0f0f0' }}>
+                          <div style={{ overflow: 'hidden', marginRight: 16 }}>
+                              <div style={{ fontWeight: 500 }}>{item.name}</div>
+                              <div style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12, wordBreak: 'break-all' }}>{item.path}</div>
+                          </div>
+                          <Button type="primary" size="small" onClick={() => confirmSelectPlayer(item.path)}>选择</Button>
+                      </div>
+                  ))
+              ) : (
+                  <div style={{ padding: '24px', textAlign: 'center', color: 'rgba(0,0,0,0.45)' }}>未检测到播放器</div>
               )}
-          />
+          </div>
       </Modal>
     </div>
   );

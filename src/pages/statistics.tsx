@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Card, Row, Col, Statistic, Table, Progress, Typography, Spin, message } from 'antd';
+import { Card, Row, Col, Statistic, Table, Progress, Typography, Spin, App } from 'antd';
 import { 
   VideoCameraOutlined, 
   FileOutlined, 
@@ -19,6 +19,7 @@ interface MovieData extends Movie {
 }
 
 const Statistics: React.FC = () => {
+  const { message } = App.useApp();
   const [movies, setMovies] = useState<MovieData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -118,7 +119,7 @@ const Statistics: React.FC = () => {
       {/* Top Summary Cards */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} md={6}>
-          <Card bordered={false}>
+          <Card variant="borderless">
             <Statistic 
               title="影视总数" 
               value={stats.totalMovies} 
@@ -127,7 +128,7 @@ const Statistics: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card bordered={false}>
+          <Card variant="borderless">
             <Statistic 
               title="占用空间" 
               value={formatSize(stats.totalSize)} 
@@ -136,7 +137,7 @@ const Statistics: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-            <Card bordered={false}>
+            <Card variant="borderless">
             <Statistic 
               title="素材总数" 
               value={stats.videoCount + stats.audioCount + stats.imageCount + stats.docCount} 
@@ -145,13 +146,13 @@ const Statistics: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-            <Card bordered={false}>
+            <Card variant="borderless">
             <Statistic 
-                title="已制作" 
+                title={<span style={{ color: 'rgba(0, 0, 0, 0.45)' }}>已制作</span>}
                 value={stats.madeCount} 
                 suffix={`/ ${stats.totalMovies}`}
                 prefix={<CheckCircleOutlined />} 
-                valueStyle={{ color: '#3f8600' }}
+                styles={{ content: { color: '#52c41a' } }}
             />
             </Card>
         </Col>
@@ -160,7 +161,7 @@ const Statistics: React.FC = () => {
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
         {/* Production Status Distribution */}
         <Col xs={24} md={12}>
-            <Card title="制作状态分布" bordered={false}>
+            <Card title="制作状态分布" variant="borderless">
                 <div style={{ marginBottom: 16 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                         <Text>已制作 ({stats.madeCount})</Text>

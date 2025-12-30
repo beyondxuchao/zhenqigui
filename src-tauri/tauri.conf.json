@@ -21,7 +21,8 @@
         "resizable": true,
         "maximizable": true,
         "minimizable": true,
-        "closable": true
+        "closable": true,
+        "dragDropEnabled": true
       }
     ],
     "security": {

@@ -52,6 +52,10 @@ pub struct Material {
     pub modified_time: Option<String>,
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppConfig {
     pub tmdb_api_key: Option<String>,
@@ -61,7 +65,7 @@ pub struct AppConfig {
     pub primary_color: Option<String>,
     #[serde(default)]
     pub proxy: Option<String>,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub save_images_locally: bool,
     pub image_save_path: Option<String>,
     #[serde(default)]

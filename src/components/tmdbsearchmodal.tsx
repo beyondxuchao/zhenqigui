@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Input, Button, Card, message, Select, Form, Row, Col, Tabs, Table, Tag } from 'antd';
+import { Modal, Input, Button, Card, Select, Form, Row, Col, Tabs, Table, Tag, App } from 'antd';
 import { SearchOutlined, FolderOpenOutlined, CloudDownloadOutlined, CheckCircleOutlined, CloseCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import { open } from '@tauri-apps/plugin-dialog';
 import { searchTmdbMovies, fetchDoubanSubject, scanForMovies } from '../services/api';
@@ -14,6 +14,7 @@ interface TmdbSearchModalProps {
 }
 
 const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, onAdd }) => {
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<(TmdbMovie | Movie)[]>([]);
   const [activeTab, setActiveTab] = useState('tmdb');
@@ -284,7 +285,7 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
               {activeTab === 'tmdb' ? '搜索' : '获取'}
             </Button>
           </Form.Item>
-           {activeTab === 'tmdb' && (
+           {(activeTab === 'tmdb' || activeTab === 'douban') && (
                <Form.Item name="type" initialValue="movie">
                 <Select size="large" style={{ width: 100 }}>
                     <Option value="movie">电影</Option>
