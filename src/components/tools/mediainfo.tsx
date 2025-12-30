@@ -178,7 +178,7 @@ const MediaInfo: React.FC<MediaInfoProps> = ({ initialFile }) => {
                         </div>
                     ) : (
                         <div style={{ flex: 1, overflow: 'auto', paddingRight: 8 }}>
-                            <Card title="基础信息" bordered={false} style={{ marginBottom: 16, boxShadow: token.boxShadowTertiary }}>
+                            <Card title="基础信息" variant="borderless" style={{ marginBottom: 16, boxShadow: token.boxShadowTertiary }}>
                                 <Descriptions column={2}>
                                     <Descriptions.Item label="封装格式">{info.format?.format_name}</Descriptions.Item>
                                     <Descriptions.Item label="时长">{info.format?.duration ? `${(parseFloat(info.format.duration) / 60).toFixed(2)} 分钟` : 'N/A'}</Descriptions.Item>

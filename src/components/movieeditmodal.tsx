@@ -20,8 +20,6 @@ const MovieEditModal: React.FC<MovieEditModalProps> = ({ visible, movie, onCance
         ...movie,
         release_date: movie.release_date ? dayjs(movie.release_date) : null,
       });
-    } else {
-      form.resetFields();
     }
   }, [visible, movie, form]);
 

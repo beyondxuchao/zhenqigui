@@ -400,6 +400,7 @@ const Settings: React.FC = () => {
         form={form}
         layout="vertical"
         onValuesChange={handleValuesChange}
+        preserve={false}
       >
         <Tabs 
             style={{ width: '100%' }}
@@ -412,7 +413,7 @@ const Settings: React.FC = () => {
                 children: (
                     <div style={{ paddingLeft: 16 }}>
                     <Space direction="vertical" style={{ width: '100%' }} size="large">
-                        <Card title="界面外观" size="small">
+                        <Card title="界面外观" size="small" variant="borderless">
                             <Form.Item label="主题模式" name="theme" style={{ marginBottom: 16 }}>
                                 <Radio.Group buttonStyle="solid">
                                     <Radio.Button value="light">浅色模式</Radio.Button>
@@ -464,7 +465,7 @@ const Settings: React.FC = () => {
                         </Card>
 
                         {/* Future expansion: Language, Startup options */}
-                        <Card title="关于应用" size="small">
+                        <Card title="关于应用" size="small" variant="borderless">
                             <Descriptions column={1} size="small">
                                 <Descriptions.Item label="当前版本">v0.1.0</Descriptions.Item>
                                 <Descriptions.Item label="构建环境">Tauri v2 + React 19</Descriptions.Item>
@@ -480,7 +481,7 @@ const Settings: React.FC = () => {
                 children: (
                     <div style={{ paddingLeft: 16 }}>
                     <Space direction="vertical" style={{ width: '100%' }} size="large">
-                        <Card title="FFmpeg 设置" size="small">
+                        <Card title="FFmpeg 设置" size="small" variant="borderless">
                              <Alert 
                                 message="FFmpeg 是处理音视频的核心组件" 
                                 description="如果您未安装 FFmpeg，或者应用内置的 FFmpeg 无法正常工作，请在此指定您本地安装的 FFmpeg 可执行文件路径（例如 ffmpeg.exe）。" 
@@ -568,7 +569,7 @@ const Settings: React.FC = () => {
                             </Form.Item>
                         </Card>
 
-                        <Card title="匹配规则" size="small">
+                        <Card title="匹配规则" size="small" variant="borderless">
                             <Form.Item label="模糊匹配阈值" name="match_threshold" tooltip="匹配本地文件时，文件名相似度高于此值才会被列出">
                                 <div style={{ width: '50%' }}>
                                     <Slider min={0} max={100} marks={{0: '宽松', 80: '标准', 100: '严格'}} />

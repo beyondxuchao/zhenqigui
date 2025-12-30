@@ -87,8 +87,8 @@ export const openFileWithPlayer = async (path: string, playerPath?: string): Pro
     return await invoke('open_file_with_player', { path, playerPath });
 };
 
-export const fetchDoubanSubject = async (tmdbId: number, isTv: boolean): Promise<any> => {
-    return await invoke('fetch_douban_subject', { tmdbId, isTv });
+export const fetchDoubanSubject = async (id: string, isTv: boolean): Promise<any> => {
+    return await invoke('fetch_douban_subject', { url_or_id: id });
 };
 
 export const scanForMovies = async (paths: string[]): Promise<Movie[]> => {

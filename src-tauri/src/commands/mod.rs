@@ -784,10 +784,19 @@ pub async fn refresh_movie_materials(state: State<'_, Database>, movie_id: u64) 
         let mut category = file.category.clone();
         if category.is_none() {
              let file_path_norm = file.path.replace("/", "\\").to_lowercase();
+             
+             // 1. Check against configured folders
              for (folder, cat) in &folder_list {
                  if file_path_norm.starts_with(folder) {
                      category = cat.clone();
                      break; 
+                 }
+             }
+             
+             // 2. Check for "成片" or "finished" in path components (subdirectories)
+             if category.is_none() {
+                 if file_path_norm.contains("\\成片\\") || file_path_norm.contains("\\finished\\") {
+                     category = Some("finished".to_string());
                  }
              }
         }
@@ -921,13 +930,13 @@ pub async fn open_directory(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn fetch_douban_subject(id: String) -> Result<Movie, String> {
-    let mut douban_id = id.clone();
+pub async fn fetch_douban_subject(url_or_id: String) -> Result<Movie, String> {
+    let mut douban_id = url_or_id.clone();
     
     // Check if it is a URL
-    if id.contains("douban.com") {
+    if url_or_id.contains("douban.com") {
         let re = Regex::new(r"subject/(\d+)").map_err(|e| e.to_string())?;
-        if let Some(caps) = re.captures(&id) {
+        if let Some(caps) = re.captures(&url_or_id) {
             if let Some(m) = caps.get(1) {
                 douban_id = m.as_str().to_string();
             }

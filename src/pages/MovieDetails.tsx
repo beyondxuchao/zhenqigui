@@ -273,7 +273,7 @@ const MovieDetails: React.FC = () => {
                         <Button type="link" size="small" icon={<FolderOpenOutlined />} onClick={() => handleOpenDirectory(record.path)} />
                     </Tooltip>
                     <Tooltip title="解除关联">
-                        <Button type="link" size="small" danger icon={<DisconnectOutlined />} onClick={() => handleRemoveMaterial(record.id)} />
+                        <Button type="link" size="small" danger icon={<CloseOutlined />} onClick={() => handleRemoveMaterial(record.id)} />
                     </Tooltip>
                 </Space>
             </div>

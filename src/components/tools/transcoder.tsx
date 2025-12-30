@@ -19,14 +19,45 @@ interface TranscoderProps {
 
 const Transcoder: React.FC<TranscoderProps> = ({ initialFile }) => {
     const { token } = theme.useToken();
-    const [file, setFile] = useState<TranscodeItem | null>(null);
+    
+    // Initialize state from initialFile if present
+    const initFileState = () => {
+        if (initialFile) {
+            const parts = initialFile.split(/[/\\]/);
+            const name = parts[parts.length - 1];
+            return { path: initialFile, name };
+        }
+        return null;
+    };
+
+    const initOutputDir = () => {
+        if (initialFile) {
+            const parts = initialFile.split(/[/\\]/);
+            const name = parts[parts.length - 1];
+            return initialFile.substring(0, initialFile.lastIndexOf(name));
+        }
+        return '';
+    };
+
+    const initOutputFilename = () => {
+        if (initialFile) {
+            const parts = initialFile.split(/[/\\]/);
+            const name = parts[parts.length - 1];
+            const lastDot = name.lastIndexOf('.');
+            const nameWithoutExt = lastDot > -1 ? name.substring(0, lastDot) : name;
+            return `${nameWithoutExt}_converted`;
+        }
+        return '';
+    };
+
+    const [file, setFile] = useState<TranscodeItem | null>(initFileState());
     const [mode, setMode] = useState<'copy' | 'mp4_compatible'>('copy');
-    const [outputDir, setOutputDir] = useState<string>('');
-    const [outputFilename, setOutputFilename] = useState<string>('');
+    const [outputDir, setOutputDir] = useState<string>(initOutputDir());
+    const [outputFilename, setOutputFilename] = useState<string>(initOutputFilename());
     const [processing, setProcessing] = useState(false);
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState<'wait' | 'process' | 'finish' | 'error'>('wait');
-    const [currentStep, setCurrentStep] = useState(0);
+    const [currentStep, setCurrentStep] = useState(initialFile ? 1 : 0);
 
     useEffect(() => {
         if (initialFile) {
@@ -168,7 +199,7 @@ const Transcoder: React.FC<TranscoderProps> = ({ initialFile }) => {
 
     const renderConfig = () => (
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
-            <Card title="转换配置" bordered={false} style={{ boxShadow: token.boxShadowTertiary }}>
+            <Card title="转换配置" variant="borderless" style={{ boxShadow: token.boxShadowTertiary }}>
                 <Form layout="vertical">
                     <Form.Item label="已选文件">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: token.colorFillAlter, borderRadius: 6 }}>

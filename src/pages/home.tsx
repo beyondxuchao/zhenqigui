@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, CSSProperties } from 'react';
-import { Empty, Button, Card, Tag, Rate, Tooltip, Select, Space, message, Modal, Badge, Skeleton } from 'antd';
+import { Empty, Button, Card, Tag, Rate, Tooltip, Select, Space, Modal, Badge, Skeleton, App } from 'antd';
 import { PlusOutlined, EditOutlined, FolderOpenOutlined, DeleteOutlined, ExclamationCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FixedSizeGrid as Grid } from 'react-window';
@@ -58,7 +58,7 @@ const MovieCell: React.FC<MovieCellProps> = ({ columnIndex, rowIndex, style, dat
                 hoverable
                 cover={<LocalImage alt={item.title} src={item.poster_path} style={{ width: '100%', aspectRatio: '2/3', objectFit: 'cover' }} />}
                 actions={[
-                    <Tooltip title={item.production_status === 'made' ? "标记为未制作" : "标记为已制作"}>
+                    <Tooltip key="status" title={item.production_status === 'made' ? "标记为未制作" : "标记为已制作"}>
                         <Button 
                             type="text" 
                             size="small" 
@@ -66,9 +66,9 @@ const MovieCell: React.FC<MovieCellProps> = ({ columnIndex, rowIndex, style, dat
                             onClick={(e) => { e.stopPropagation(); handleToggleStatus(item); }} 
                         />
                     </Tooltip>,
-                    <Tooltip title="编辑"><Button type="text" size="small" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); setEditingMovie(item); }} /></Tooltip>,
-                    <Tooltip title="匹配素材"><Button type="text" size="small" icon={<FolderOpenOutlined />} onClick={(e) => { e.stopPropagation(); navigate(`/match/${item.id}`); }} /></Tooltip>,
-                    <Tooltip title="删除"><Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} /></Tooltip>
+                    <Tooltip key="edit" title="编辑"><Button type="text" size="small" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); setEditingMovie(item); }} /></Tooltip>,
+                    <Tooltip key="match" title="匹配素材"><Button type="text" size="small" icon={<FolderOpenOutlined />} onClick={(e) => { e.stopPropagation(); navigate(`/match/${item.id}`); }} /></Tooltip>,
+                    <Tooltip key="delete" title="删除"><Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} /></Tooltip>
                 ]}
                 styles={{ body: { padding: 8 } }}
                 onClick={() => navigate(`/details/${item.id}`)}
@@ -95,12 +95,13 @@ const MovieCell: React.FC<MovieCellProps> = ({ columnIndex, rowIndex, style, dat
 };
 
 const Home: React.FC = () => {
+  const { message, modal } = App.useApp();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const actorNameParam = searchParams.get('actorName');
   const genreParam = searchParams.get('genre');
   
-  const { searchQuery } = useApp();
+  const { searchQuery, setSearchQuery } = useApp();
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
@@ -234,8 +235,9 @@ const Home: React.FC = () => {
           try {
               await autoMatchMovie(addedMovie.id);
               console.log('Auto match completed for', addedMovie.title);
-              // Optionally reload movies to show matched count if UI supports it
-              loadMovies(); 
+              // Do NOT reload movies here as it causes race condition and duplicate keys 
+              // when the list is already updated by loadMovies() above.
+              // loadMovies(); 
           } catch (e) {
               console.error('Auto match failed:', e);
           }

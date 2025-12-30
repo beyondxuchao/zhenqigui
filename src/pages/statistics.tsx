@@ -189,7 +189,7 @@ const Statistics: React.FC = () => {
 
         {/* Material Types Distribution */}
         <Col xs={24} md={12}>
-            <Card title="素材类型分布" bordered={false}>
+            <Card title="素材类型分布" variant="borderless">
                 <Row gutter={[16, 16]}>
                     <Col span={12}>
                         <Statistic title="视频" value={stats.videoCount} prefix={<VideoCameraOutlined />} />
@@ -211,7 +211,7 @@ const Statistics: React.FC = () => {
       <Row gutter={[16, 16]} style={{ marginTop: 24 }}>
           {/* Top Genres */}
           <Col xs={24}>
-              <Card title="热门分类 Top 10" bordered={false}>
+              <Card title="热门分类 Top 10" variant="borderless">
                   <Table 
                     dataSource={stats.topGenres} 
                     columns={[
