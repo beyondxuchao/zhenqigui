@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, Row, Col, Modal } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import { listen } from '@tauri-apps/api/event';
 import { 
     InfoCircleOutlined, 
     SwapOutlined, 
@@ -13,6 +14,7 @@ import MediaInfo from '../components/tools/mediainfo';
 import Transcoder from '../components/tools/transcoder';
 import SubtitleTool from '../components/tools/subtitletool';
 import AudioExtractor from '../components/tools/audioextractor';
+import AudioProcessor from '../components/tools/audioprocessor';
 
 const { Meta } = Card;
 
@@ -28,6 +30,8 @@ interface ToolItem {
 
 const Tools: React.FC = () => {
     const [activeTool, setActiveTool] = useState<ToolItem | null>(null);
+    const [droppedFile, setDroppedFile] = useState<string | undefined>(undefined);
+    const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
     const navigate = useNavigate();
 
     const tools: ToolItem[] = [
@@ -70,6 +74,14 @@ const Tools: React.FC = () => {
             icon: <AudioOutlined style={{ fontSize: 32, color: '#eb2f96' }} />,
             component: <AudioExtractor />,
             width: 600
+        },
+        {
+            id: 'audioprocessor',
+            title: '音频处理',
+            description: '音频强力限制 (Forced Limiter) 与增益调整',
+            icon: <AudioOutlined style={{ fontSize: 32, color: '#f5222d' }} />,
+            component: <AudioProcessor />,
+            width: 1000
         }
     ];
 
@@ -83,28 +95,119 @@ const Tools: React.FC = () => {
 
     const handleClose = () => {
         setActiveTool(null);
+        setDroppedFile(undefined);
     };
+
+    useEffect(() => {
+        const unlistenPromise = listen('tauri://drag-drop', (event: any) => {
+            const payload = event.payload as { paths: string[], position: { x: number, y: number } };
+            if (payload.paths && payload.paths.length > 0) {
+                // Tauri drag-drop position is in physical pixels, convert to logical pixels
+                const scaleFactor = window.devicePixelRatio || 1;
+                const x = payload.position.x / scaleFactor;
+                const y = payload.position.y / scaleFactor;
+                
+                console.log(`Drag drop at: ${x}, ${y} (Physical: ${payload.position.x}, ${payload.position.y})`);
+
+                // Iterate over registered cards to check if drop occurred on one of them
+                for (const [id, element] of cardRefs.current.entries()) {
+                    const rect = element.getBoundingClientRect();
+                    // Check if point (x, y) is within the rectangle
+                    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                        const tool = tools.find(t => t.id === id);
+                        if (tool) {
+                            console.log('Dropped on tool:', tool.title);
+                            setDroppedFile(payload.paths[0]);
+                            setActiveTool(tool);
+                        }
+                        break;
+                    }
+                }
+            }
+        });
+
+        return () => {
+            unlistenPromise.then(unlisten => unlisten());
+        };
+    }, []); // Removed empty dependency array to ensure tools access is correct? No, tools is defined inside component.
+    // Wait, tools is defined inside the component on every render.
+    // However, the effect runs only once on mount. 
+    // The `tools` array inside the effect will be the one from the initial render.
+    // Since `tools` depends on `FileRenamer`, `MediaInfo` etc which are imported components, they are stable.
+    // But `handleToolClick` depends on `navigate` and `setActiveTool`.
+    // The closure inside `useEffect` captures the initial `handleToolClick`.
+    // This should be fine as `setActiveTool` is stable.
+    
+    // Let's try to debug why it's not opening. 
+    // Maybe `cardRefs` are not populated correctly?
+    // Or coordinate system mismatch? 
+    // Tauri coordinates might be screen coordinates vs client coordinates.
+    // But usually they match if window is maximized or normal.
+    
+    // Let's try to fix the dependency issue first. `tools` is recreated on every render.
+    // We should move `tools` definition outside or wrap in useMemo, but since it contains JSX, it's tricky.
+    // Better to use a ref or just rely on IDs.
+    
+    // The issue might be that `tools` inside the effect closure is stale? 
+    // No, `tools` is constant structure wise.
+    
+    // Let's try to use `activeTool` state directly.
+    
+    // Wait, `handleToolClick` uses `navigate` which might change? No, usually stable.
+    
+    // The most likely issue is that `cardRefs` are not yet populated when the listener is attached? 
+    // No, listener is attached on mount. Refs are populated on render.
+    
+    // One possibility: `tools` array is defined inside the component body.
+    // The `useEffect` has `[]` dependency.
+    // It captures the `tools` from the first render.
+    // That should be fine.
+    
+    // However, let's try to make `tools` available via a ref or recreate it.
+    
+    // Another potential issue: `handleToolClick` calls `setActiveTool`.
+    
+    // Let's verify if `handleToolClick` is being called.
+    // Since I cannot add logs easily and see them, I will modify the logic to be more robust.
+    
+    // I will try to rebuild the `tools` map inside the effect if needed, but `tools` is local.
+    
+    // Let's try to update the `useEffect` to depend on `tools`? No, that would re-register listener too often.
+    
+    // Let's move `tools` definition to `useMemo` to be safe, although not strictly necessary if we don't depend on it.
+    
+    // Actually, `tools` is defined at the top level of the component.
+    // The `useEffect` closure captures the *first* `tools` array.
+    // `handleToolClick` is also captured.
+    
+    // Let's try to use `setActiveTool` directly in the loop as shown in the new_str.
+    
+    // Also, I will fix the Ant Design warning in `audioprocessor.tsx`.
 
     return (
         <div>
             <Row gutter={[16, 16]}>
                 {tools.map(tool => (
                     <Col xs={24} sm={12} md={8} lg={6} xl={4} key={tool.id}>
-                        <Card
-                            hoverable
-                            onClick={() => handleToolClick(tool)}
-                            style={{ height: '100%' }}
-                            styles={{ 
-                                body: { 
-                                    display: 'flex', 
-                                    flexDirection: 'column', 
-                                    alignItems: 'center', 
-                                    textAlign: 'center',
-                                    paddingTop: 32,
-                                    paddingBottom: 32
-                                }
-                            }}
-                        >
+                        <div ref={el => {
+                            if (el) cardRefs.current.set(tool.id, el);
+                            else cardRefs.current.delete(tool.id);
+                        }} style={{ height: '100%' }}>
+                            <Card
+                                hoverable
+                                onClick={() => handleToolClick(tool)}
+                                style={{ height: '100%' }}
+                                styles={{ 
+                                    body: { 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        alignItems: 'center', 
+                                        textAlign: 'center',
+                                        paddingTop: 32,
+                                        paddingBottom: 32
+                                    }
+                                }}
+                            >
                             <div style={{ marginBottom: 16 }}>
                                 {tool.icon}
                             </div>
@@ -123,7 +226,8 @@ const Tools: React.FC = () => {
                                     </div>
                                 } 
                             />
-                        </Card>
+                            </Card>
+                        </div>
                     </Col>
                 ))}
             </Row>
@@ -138,7 +242,9 @@ const Tools: React.FC = () => {
                 maskClosable={false}
                 footer={null}
             >
-                {activeTool?.component}
+                {activeTool?.component && React.isValidElement(activeTool.component) 
+                    ? React.cloneElement(activeTool.component as React.ReactElement, { initialFile: droppedFile } as any)
+                    : activeTool?.component}
             </Modal>
         </div>
     );

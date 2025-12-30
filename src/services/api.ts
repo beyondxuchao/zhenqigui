@@ -1,36 +1,54 @@
 import { invoke } from '@tauri-apps/api/core';
-import { Movie, TmdbMovie, AppConfig, AppInfo, DetectedPlayer, Material, MatchedFile } from '../types';
+import { Movie, AppConfig, AppInfo, MatchedFile, Material, TmdbMovie } from '../types';
+
+export interface DetectedPlayer {
+    name: string;
+    path: string;
+    icon?: string;
+}
+
+export const greet = async (name: string): Promise<string> => {
+    return await invoke('greet', { name });
+};
 
 export const getMovies = async (): Promise<Movie[]> => {
     return await invoke('get_movies');
 };
 
-export const getMovieDetails = async (id: number): Promise<Movie> => {
-    return await invoke('get_movie_details', { id });
+export const readImage = async (path: string): Promise<string> => {
+    return await invoke('read_image', { path });
+};
+
+export const getAppInfo = async (): Promise<AppInfo> => {
+    return await invoke('get_app_info');
 };
 
 export const addMovie = async (movie: Movie): Promise<Movie> => {
     return await invoke('add_movie', { movie });
 };
 
-export const updateMovie = async (movie: Movie): Promise<void> => {
-    return await invoke('update_movie', { movie });
+export const autoMatchMovie = async (movieId: number): Promise<void> => {
+    return await invoke('auto_match_movie', { movieId });
 };
 
 export const deleteMovie = async (id: number): Promise<void> => {
     return await invoke('delete_movie', { id });
 };
 
+export const updateMovie = async (movie: Movie): Promise<Movie> => {
+    return await invoke('update_movie', { movie });
+};
+
 export const updateMovieStatus = async (id: number, status: string): Promise<void> => {
     return await invoke('update_movie_status', { id, status });
 };
 
-export const searchTmdbMovies = async (query: string, page: number = 1): Promise<TmdbMovie[]> => {
-    return await invoke('search_tmdb_movies', { query, page });
+export const getMovieDetails = async (id: number): Promise<Movie | null> => {
+    return await invoke('get_movie_details', { id });
 };
 
-export const getTmdbDetails = async (tmdbId: number, type: string): Promise<any> => {
-    return await invoke('get_tmdb_details', { tmdbId, type });
+export const getTmdbDetails = async (tmdbId: number, mediaType?: string): Promise<any> => {
+    return await invoke('get_tmdb_details', { tmdbId, mediaType });
 };
 
 export const getConfig = async (): Promise<AppConfig> => {
@@ -41,12 +59,16 @@ export const saveConfig = async (config: AppConfig): Promise<void> => {
     return await invoke('save_config', { config });
 };
 
-export const scanDirectories = async (paths: string[], titles?: string[], threshold?: number): Promise<MatchedFile[]> => {
-    return await invoke('scan_directories', { paths, titles, threshold });
+export const searchTmdbMovies = async (query: string, page: number = 1): Promise<TmdbMovie[]> => {
+    return await invoke('search_tmdb_movies', { query, page });
 };
 
-export const autoMatchMovie = async (movieId: number): Promise<void> => {
-    return await invoke('auto_match_movie', { movieId });
+export const testTmdbConnection = async (apiKey: string, proxy?: string): Promise<boolean> => {
+    return await invoke('test_tmdb_connection', { apiKey, proxy });
+};
+
+export const scanDirectories = async (paths: string[], titles?: string[], threshold?: number): Promise<MatchedFile[]> => {
+    return await invoke('scan_directories', { paths, titles, threshold });
 };
 
 export const refreshMovieMaterials = async (movieId: number): Promise<Material[]> => {
@@ -61,27 +83,15 @@ export const removeMaterialFromMovie = async (movieId: number, materialId: strin
     return await invoke('remove_material_from_movie', { movieId, materialId });
 };
 
-export const openFileWithPlayer = async (path: string): Promise<void> => {
-    return await invoke('open_file_with_player', { path });
+export const openFileWithPlayer = async (path: string, playerPath?: string): Promise<void> => {
+    return await invoke('open_file_with_player', { path, playerPath });
 };
 
-export const readImage = async (path: string): Promise<string> => {
-    return await invoke('read_image', { path });
+export const fetchDoubanSubject = async (tmdbId: number, isTv: boolean): Promise<any> => {
+    return await invoke('fetch_douban_subject', { tmdbId, isTv });
 };
 
-export const getAppInfo = async (): Promise<AppInfo> => {
-    return await invoke('get_app_info');
-};
-
-export const testTmdbConnection = async (apiKey: string, proxy?: string): Promise<boolean> => {
-    return await invoke('test_tmdb_connection', { apiKey, proxy });
-};
-
-export const fetchDoubanSubject = async (id: string): Promise<Movie> => {
-    return await invoke('fetch_douban_subject', { id });
-};
-
-export const scanForMovies = async (paths: string[]): Promise<MatchedFile[]> => {
+export const scanForMovies = async (paths: string[]): Promise<Movie[]> => {
     return await invoke('scan_for_movies', { paths });
 };
 
@@ -148,4 +158,30 @@ export const searchUsnJournal = async (volume: string, keyword: string): Promise
 
 export const openDirectory = async (path: string): Promise<void> => {
     return await invoke('open_directory', { path });
+};
+
+// Audio Processor
+export interface AudioPreset {
+    id: number;
+    name: string;
+    input_boost: number;
+    max_amplitude: number;
+    lookahead: number;
+    release_time: number;
+}
+
+export const saveAudioPreset = async (name: string, inputBoost: number, maxAmplitude: number, lookahead: number, releaseTime: number): Promise<number> => {
+    return await invoke('save_audio_preset', { name, inputBoost, maxAmplitude, lookahead, releaseTime });
+};
+
+export const getAudioPresets = async (): Promise<AudioPreset[]> => {
+    return await invoke('get_audio_presets');
+};
+
+export const deleteAudioPreset = async (id: number): Promise<void> => {
+    return await invoke('delete_audio_preset', { id });
+};
+
+export const processAudioLimiter = async (input: string, output: string, inputBoost: number, maxAmplitude: number, lookahead: number, releaseTime: number): Promise<void> => {
+    return await invoke('process_audio_limiter', { input, output, inputBoost, maxAmplitude, lookahead, releaseTime });
 };

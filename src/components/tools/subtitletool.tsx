@@ -7,7 +7,11 @@ import { open } from '@tauri-apps/plugin-dialog';
 
 const { Text, Title, Paragraph } = Typography;
 
-const SubtitleTool: React.FC = () => {
+interface SubtitleToolProps {
+    initialFile?: string;
+}
+
+const SubtitleTool: React.FC<SubtitleToolProps> = ({ initialFile }) => {
     const { token } = theme.useToken();
     const [file, setFile] = useState<{ path: string; name: string } | null>(null);
     const [outputDir, setOutputDir] = useState<string>('');
@@ -16,6 +20,12 @@ const SubtitleTool: React.FC = () => {
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState<'wait' | 'process' | 'finish' | 'error'>('wait');
     const [currentStep, setCurrentStep] = useState(0);
+
+    useEffect(() => {
+        if (initialFile) {
+            handleFileSelect(initialFile);
+        }
+    }, [initialFile]);
 
     useEffect(() => {
         const unlisten = listen('tauri://drag-drop', (event) => {

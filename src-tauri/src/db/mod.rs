@@ -82,9 +82,29 @@ impl Database {
                 genres TEXT,
                 actors TEXT,
                 directors TEXT,
-                materials TEXT
+                materialsvalue TEXT
             )",
             [],
+        )?;
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS audio_presets (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                input_boost REAL NOT NULL,
+                max_amplitude REAL NOT NULL,
+                lookahead REAL NOT NULL,
+                release_time REAL NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        )?;
+
+        // Insert default preset
+        conn.execute(
+            "INSERT OR IGNORE INTO audio_presets (name, input_boost, max_amplitude, lookahead, release_time)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params!["配音剪辑", 12.0, -0.1, 5.0, 40.0],
         )?;
 
         // Create indexes for performance
@@ -182,6 +202,10 @@ impl Database {
 
     pub fn get_root_dir(&self) -> PathBuf {
         self.root_dir.clone()
+    }
+
+    pub fn get_connection(&self) -> &Mutex<Connection> {
+        &self.conn
     }
 
     fn set_data_root_config(new_path: &str) -> Result<()> {

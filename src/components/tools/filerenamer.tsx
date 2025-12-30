@@ -18,7 +18,11 @@ interface RenameItem {
     _ext?: string;
 }
 
-const FileRenamer: React.FC = () => {
+interface FileRenamerProps {
+    initialFile?: string;
+}
+
+const FileRenamer: React.FC<FileRenamerProps> = ({ initialFile }) => {
     const [files, setFiles] = useState<RenameItem[]>([]);
     const [loading, setLoading] = useState(false);
     
@@ -32,6 +36,10 @@ const FileRenamer: React.FC = () => {
     const [useRegex, setUseRegex] = useState(false);
 
     useEffect(() => {
+        if (initialFile) {
+            processDroppedPaths([initialFile]);
+        }
+
         const unlisten = listen('tauri://drag-drop', (event) => {
             const payload = event.payload as { paths: string[] };
             if (payload.paths && payload.paths.length > 0) {

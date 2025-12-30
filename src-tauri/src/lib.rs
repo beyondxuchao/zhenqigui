@@ -97,6 +97,10 @@ pub fn run() {
             commands::extract_subtitles,
             commands::search_usn_journal,
             commands::open_directory,
+            commands::save_audio_preset,
+            commands::get_audio_presets,
+            commands::delete_audio_preset,
+            commands::process_audio_limiter,
             drag::drag_file,
         ])
         .run(tauri::generate_context!())

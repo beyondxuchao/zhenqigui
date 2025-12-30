@@ -13,7 +13,11 @@ interface TranscodeItem {
     size?: number;
 }
 
-const Transcoder: React.FC = () => {
+interface TranscoderProps {
+    initialFile?: string;
+}
+
+const Transcoder: React.FC<TranscoderProps> = ({ initialFile }) => {
     const { token } = theme.useToken();
     const [file, setFile] = useState<TranscodeItem | null>(null);
     const [mode, setMode] = useState<'copy' | 'mp4_compatible'>('copy');
@@ -23,6 +27,12 @@ const Transcoder: React.FC = () => {
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState<'wait' | 'process' | 'finish' | 'error'>('wait');
     const [currentStep, setCurrentStep] = useState(0);
+
+    useEffect(() => {
+        if (initialFile) {
+            handleFileSelect(initialFile);
+        }
+    }, [initialFile]);
 
     useEffect(() => {
         const unlisten = listen('tauri://drag-drop', (event) => {

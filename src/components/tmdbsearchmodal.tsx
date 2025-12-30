@@ -53,7 +53,7 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
             id = urlMatch[1];
         }
         
-        const movie = await fetchDoubanSubject(id);
+        const movie = await fetchDoubanSubject(id, values.type === 'tv');
         setResults([movie]);
       }
     } catch (error: any) {

@@ -7,7 +7,11 @@ import { open } from '@tauri-apps/plugin-dialog';
 
 const { Text, Title } = Typography;
 
-const MediaInfo: React.FC = () => {
+interface MediaInfoProps {
+    initialFile?: string;
+}
+
+const MediaInfo: React.FC<MediaInfoProps> = ({ initialFile }) => {
     const { token } = theme.useToken();
     const [info, setInfo] = useState<any>(null);
     const [loading, setLoading] = useState(false);
@@ -16,6 +20,10 @@ const MediaInfo: React.FC = () => {
 
     useEffect(() => {
         checkFfmpeg().then(setFfmpegReady);
+
+        if (initialFile) {
+            analyzeFile(initialFile);
+        }
 
         const unlisten = listen('tauri://drag-drop', (event) => {
             const payload = event.payload as { paths: string[] };

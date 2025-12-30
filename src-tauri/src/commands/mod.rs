@@ -1,6 +1,8 @@
 use std::process::Command;
 pub mod usn;
+pub mod audio;
 pub use usn::*;
+pub use audio::*;
 use std::path::{Path, PathBuf};
 use std::fs;
 use tauri::{State, AppHandle};
@@ -18,7 +20,7 @@ use crate::models::Person;
 use winreg::HKEY;
 
 // Helper to run ffmpeg/ffprobe either from sidecar or custom path
-async fn run_media_tool(app: &AppHandle, db: &Database, tool: &str, args: &[&str]) -> Result<(bool, Vec<u8>, Vec<u8>), String> {
+pub async fn run_media_tool(app: &AppHandle, db: &Database, tool: &str, args: &[&str]) -> Result<(bool, Vec<u8>, Vec<u8>), String> {
     let config = db.get_config();
     
     if let Some(ffmpeg_path) = config.ffmpeg_path {
@@ -320,7 +322,12 @@ pub async fn auto_match_movie(state: State<'_, Database>, movie_id: u64) -> Resu
     let mut folder_map = std::collections::HashMap::new();
     
     let normalize_path = |p: &str| -> String {
-        p.replace("/", "\\").to_lowercase().trim_end_matches('\\').to_string()
+        let s = p.replace("/", "\\").to_lowercase();
+        if !s.ends_with('\\') {
+            s + "\\"
+        } else {
+            s
+        }
     };
 
     for p in &config.default_monitor_folders {
@@ -568,14 +575,17 @@ fn scan_paths_internal(paths: Vec<String>, titles: Option<Vec<String>>, threshol
                         }
 
                         if similarity >= threshold {
+                            let path_str_lossy = path.to_string_lossy();
+                            let category = None;
+
                             local_results.push(MatchedFile {
-                                key: path.to_string_lossy().to_string(),
+                                key: path_str_lossy.to_string(),
                                 name: file_name,
-                                path: path.to_string_lossy().to_string(),
+                                path: path_str_lossy.to_string(),
                                 size: entry.metadata().map(|m| m.len().to_string()).unwrap_or_else(|_| "0".to_string()),
                                 similarity: (similarity * 100.0) as u8,
                                 file_type: file_type.to_string(),
-                                category: None,
+                                category,
                                 modified_time: entry.metadata().ok().and_then(|m| m.modified().ok()).map(|t| chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339()),
                             });
                         }
@@ -726,7 +736,12 @@ pub async fn refresh_movie_materials(state: State<'_, Database>, movie_id: u64) 
     let config = state.get_config();
     let mut folder_list: Vec<(String, Option<String>)> = Vec::new();
     let normalize_path = |p: &str| -> String {
-        p.replace("/", "\\").to_lowercase().trim_end_matches('\\').to_string()
+        let s = p.replace("/", "\\").to_lowercase();
+        if !s.ends_with('\\') {
+            s + "\\"
+        } else {
+            s
+        }
     };
     for p in &config.default_monitor_folders {
         folder_list.push((normalize_path(p), None));
