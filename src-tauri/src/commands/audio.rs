@@ -17,7 +17,8 @@ pub struct AudioPreset {
 
 #[tauri::command]
 pub fn get_audio_presets(state: State<Database>) -> Result<Vec<AudioPreset>, String> {
-    let conn = state.get_connection().lock().map_err(|e| e.to_string())?;
+    let db_conn = state.get_connection();
+    let conn = db_conn.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare("SELECT id, name, input_boost, max_amplitude, lookahead, release_time, created_at FROM audio_presets ORDER BY created_at DESC").map_err(|e| e.to_string())?;
     
     let preset_iter = stmt.query_map([], |row| {
@@ -49,7 +50,8 @@ pub fn save_audio_preset(
     lookahead: f64, 
     release_time: f64
 ) -> Result<i64, String> {
-    let conn = state.get_connection().lock().map_err(|e| e.to_string())?;
+    let db_conn = state.get_connection();
+    let conn = db_conn.lock().map_err(|e| e.to_string())?;
     
     conn.execute(
         "INSERT INTO audio_presets (name, input_boost, max_amplitude, lookahead, release_time) VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -61,7 +63,8 @@ pub fn save_audio_preset(
 
 #[tauri::command]
 pub fn delete_audio_preset(state: State<Database>, id: i64) -> Result<(), String> {
-    let conn = state.get_connection().lock().map_err(|e| e.to_string())?;
+    let db_conn = state.get_connection();
+    let conn = db_conn.lock().map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM audio_presets WHERE id = ?1", params![id]).map_err(|e| e.to_string())?;
     Ok(())
 }

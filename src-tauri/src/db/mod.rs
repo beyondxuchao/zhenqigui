@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, Arc};
 use crate::models::{AppData, Movie, AppConfig, Material};
 use anyhow::Result;
 use dirs;
@@ -13,8 +13,9 @@ struct LauncherConfig {
     data_root: String,
 }
 
+#[derive(Clone)]
 pub struct Database {
-    conn: Mutex<Connection>,
+    conn: Arc<Mutex<Connection>>,
     root_dir: PathBuf,
 }
 
@@ -123,7 +124,7 @@ impl Database {
         )?;
 
         let db = Self {
-            conn: Mutex::new(conn),
+            conn: Arc::new(Mutex::new(conn)),
             root_dir: path.clone(),
         };
 
@@ -204,8 +205,8 @@ impl Database {
         self.root_dir.clone()
     }
 
-    pub fn get_connection(&self) -> &Mutex<Connection> {
-        &self.conn
+    pub fn get_connection(&self) -> Arc<Mutex<Connection>> {
+        self.conn.clone()
     }
 
     fn set_data_root_config(new_path: &str) -> Result<()> {
@@ -443,6 +444,15 @@ impl Database {
     }
 
     // New methods to support commands/mod.rs
+
+    pub fn update_movie_images(&self, id: u64, poster_path: Option<String>, actors_json: String, directors_json: String) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE movies SET poster_path = ?1, actors = ?2, directors = ?3 WHERE id = ?4",
+            params![poster_path, actors_json, directors_json, id as i64],
+        )?;
+        Ok(())
+    }
 
     pub fn add_material(&self, movie_id: u64, material: Material) -> Result<()> {
         let conn = self.conn.lock().unwrap();

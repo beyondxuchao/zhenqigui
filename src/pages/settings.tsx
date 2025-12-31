@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Tabs, Form, Input, Slider, Radio, Button, Alert, Flex, Space, Switch, Descriptions, Divider, Card, Tag, Popconfirm, Modal, App, type TabsProps } from 'antd';
+import { Tabs, Form, Input, Slider, Radio, Button, Alert, Flex, Space, Switch, Descriptions, Divider, Card, Tag, Popconfirm, Modal, App, theme, type TabsProps } from 'antd';
 import { 
     SaveOutlined, 
     UploadOutlined, 
@@ -20,6 +20,7 @@ import { open, save } from '@tauri-apps/plugin-dialog';
 import { useApp } from '../context/appcontext';
 
 const Settings: React.FC = () => {
+  const { token } = theme.useToken();
   const [form] = Form.useForm();
   const { message } = App.useApp();
   const primaryColor = Form.useWatch('primary_color', form);
@@ -586,9 +587,9 @@ const Settings: React.FC = () => {
                             </Form.Item>
                             
                             <Form.Item label="原片监控文件夹 (Source)" extra="用于存放原始拍摄素材或未剪辑的视频文件">
-                                <div style={{ border: '1px solid #d9d9d9', borderRadius: 8 }}>
+                                <div style={{ border: `1px solid ${token.colorBorder}`, borderRadius: token.borderRadiusLG }}>
                                     {monitorFoldersSource.map((item) => (
-                                        <div key={item} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                                        <div key={item} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
                                             <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
                                                 <FolderOpenOutlined style={{ marginRight: 8, color: '#faad14', flexShrink: 0 }} />
                                                 <span style={{ wordBreak: 'break-all' }}>{item}</span>
@@ -597,9 +598,9 @@ const Settings: React.FC = () => {
                                         </div>
                                     ))}
                                     {monitorFoldersSource.length === 0 && (
-                                        <div style={{ padding: '16px', textAlign: 'center', color: 'rgba(0,0,0,0.45)', borderBottom: '1px solid #f0f0f0' }}>暂无数据</div>
+                                        <div style={{ padding: '16px', textAlign: 'center', color: token.colorTextSecondary, borderBottom: `1px solid ${token.colorBorderSecondary}` }}>暂无数据</div>
                                     )}
-                                    <div style={{ padding: '8px 16px', background: '#fafafa' }}>
+                                    <div style={{ padding: '8px 16px', background: token.colorFillAlter, borderBottomLeftRadius: token.borderRadiusLG, borderBottomRightRadius: token.borderRadiusLG }}>
                                         <Button type="dashed" onClick={handleAddMonitorFolderSource} block icon={<FolderAddOutlined />}>
                                             添加原片文件夹
                                         </Button>
@@ -608,9 +609,9 @@ const Settings: React.FC = () => {
                             </Form.Item>
 
                             <Form.Item label="成片监控文件夹 (Finished)" extra="用于存放已经剪辑完成、导出的成品视频文件">
-                                <div style={{ border: '1px solid #d9d9d9', borderRadius: 8 }}>
+                                <div style={{ border: `1px solid ${token.colorBorder}`, borderRadius: token.borderRadiusLG }}>
                                     {monitorFoldersFinished.map((item) => (
-                                        <div key={item} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                                        <div key={item} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
                                             <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
                                                 <FolderOpenOutlined style={{ marginRight: 8, color: '#52c41a', flexShrink: 0 }} />
                                                 <span style={{ wordBreak: 'break-all' }}>{item}</span>
@@ -619,9 +620,9 @@ const Settings: React.FC = () => {
                                         </div>
                                     ))}
                                     {monitorFoldersFinished.length === 0 && (
-                                        <div style={{ padding: '16px', textAlign: 'center', color: 'rgba(0,0,0,0.45)', borderBottom: '1px solid #f0f0f0' }}>暂无数据</div>
+                                        <div style={{ padding: '16px', textAlign: 'center', color: token.colorTextSecondary, borderBottom: `1px solid ${token.colorBorderSecondary}` }}>暂无数据</div>
                                     )}
-                                    <div style={{ padding: '8px 16px', background: '#fafafa' }}>
+                                    <div style={{ padding: '8px 16px', background: token.colorFillAlter, borderBottomLeftRadius: token.borderRadiusLG, borderBottomRightRadius: token.borderRadiusLG }}>
                                         <Button type="dashed" onClick={handleAddMonitorFolderFinished} block icon={<FolderAddOutlined />}>
                                             添加成片文件夹
                                         </Button>
@@ -630,9 +631,9 @@ const Settings: React.FC = () => {
                             </Form.Item>
                             
                             <Form.Item label="通用监控文件夹" extra="这些文件夹将自动在“素材匹配”页面加载，无需每次重复选择">
-                                <div style={{ border: '1px solid #d9d9d9', borderRadius: 8 }}>
+                                <div style={{ border: `1px solid ${token.colorBorder}`, borderRadius: token.borderRadiusLG }}>
                                     {monitorFolders.map((item) => (
-                                        <div key={item} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                                        <div key={item} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
                                             <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
                                                 <FolderOpenOutlined style={{ marginRight: 8, color: '#1890ff', flexShrink: 0 }} />
                                                 <span style={{ wordBreak: 'break-all' }}>{item}</span>
@@ -641,9 +642,9 @@ const Settings: React.FC = () => {
                                         </div>
                                     ))}
                                     {monitorFolders.length === 0 && (
-                                        <div style={{ padding: '16px', textAlign: 'center', color: 'rgba(0,0,0,0.45)', borderBottom: '1px solid #f0f0f0' }}>暂无数据</div>
+                                        <div style={{ padding: '16px', textAlign: 'center', color: token.colorTextSecondary, borderBottom: `1px solid ${token.colorBorderSecondary}` }}>暂无数据</div>
                                     )}
-                                    <div style={{ padding: '8px 16px', background: '#fafafa' }}>
+                                    <div style={{ padding: '8px 16px', background: token.colorFillAlter, borderBottomLeftRadius: token.borderRadiusLG, borderBottomRightRadius: token.borderRadiusLG }}>
                                         <Button type="dashed" onClick={handleAddMonitorFolder} block icon={<FolderAddOutlined />}>
                                             添加监控文件夹
                                         </Button>

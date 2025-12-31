@@ -88,7 +88,7 @@ pub fn run() {
             commands::set_data_directory,
             commands::detect_local_players,
             commands::rename_movie_file,
-            commands::list_video_files,
+            commands::list_dir_files,
             commands::rename_file_direct,
             commands::check_ffmpeg,
             commands::get_media_info,

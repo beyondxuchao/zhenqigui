@@ -196,7 +196,7 @@ const AudioProcessor: React.FC<AudioProcessorProps> = ({ initialFile }) => {
                                                 value={inputBoost}
                                                 onChange={(val) => setInputBoost(val || 0)}
                                             />
-                                            <Input style={{ width: 30, borderLeft: 0, pointerEvents: 'none', backgroundColor: '#fff' }} placeholder="dB" disabled />
+                                            <Input style={{ width: 30, borderLeft: 0, pointerEvents: 'none' }} placeholder="dB" disabled />
                                         </Space.Compact>
                                     </Col>
                                 </Row>
@@ -223,7 +223,7 @@ const AudioProcessor: React.FC<AudioProcessorProps> = ({ initialFile }) => {
                                                 value={maxAmplitude}
                                                 onChange={(val) => setMaxAmplitude(val || -0.1)}
                                             />
-                                            <Input style={{ width: 30, borderLeft: 0, pointerEvents: 'none', backgroundColor: '#fff', color: 'rgba(0, 0, 0, 0.45)' }} placeholder="dB" disabled />
+                                            <Input style={{ width: 30, borderLeft: 0, pointerEvents: 'none' }} placeholder="dB" disabled />
                                         </Space.Compact>
                                     </Col>
                                 </Row>
@@ -250,7 +250,7 @@ const AudioProcessor: React.FC<AudioProcessorProps> = ({ initialFile }) => {
                                                 value={lookahead}
                                                 onChange={(val) => setLookahead(val || 5)}
                                             />
-                                            <Input style={{ width: 30, borderLeft: 0, pointerEvents: 'none', backgroundColor: '#fff', color: 'rgba(0, 0, 0, 0.45)' }} placeholder="ms" disabled />
+                                            <Input style={{ width: 30, borderLeft: 0, pointerEvents: 'none' }} placeholder="ms" disabled />
                                         </Space.Compact>
                                     </Col>
                                 </Row>
@@ -277,7 +277,7 @@ const AudioProcessor: React.FC<AudioProcessorProps> = ({ initialFile }) => {
                                                 value={releaseTime}
                                                 onChange={(val) => setReleaseTime(val || 50)}
                                             />
-                                            <Input style={{ width: 30, borderLeft: 0, pointerEvents: 'none', backgroundColor: '#fff', color: 'rgba(0, 0, 0, 0.45)' }} placeholder="ms" disabled />
+                                            <Input style={{ width: 30, borderLeft: 0, pointerEvents: 'none' }} placeholder="ms" disabled />
                                         </Space.Compact>
                                     </Col>
                                 </Row>

@@ -108,27 +108,18 @@ const Tools: React.FC = () => {
                 const x = payload.position.x / scaleFactor;
                 const y = payload.position.y / scaleFactor;
                 
-                console.log(`Drag drop at: ${x}, ${y} (Physical: ${payload.position.x}, ${payload.position.y})`);
-
                 // Iterate over registered cards to check if drop occurred on one of them
-                let droppedOnTool = false;
                 for (const [id, element] of cardRefs.current.entries()) {
                     const rect = element.getBoundingClientRect();
                     // Check if point (x, y) is within the rectangle
                     if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
                         const tool = tools.find(t => t.id === id);
                         if (tool) {
-                            console.log('Dropped on tool:', tool.title);
                             setDroppedFile(payload.paths[0]);
                             setActiveTool(tool);
-                            droppedOnTool = true;
                         }
                         break;
                     }
-                }
-                
-                if (!droppedOnTool) {
-                    console.log('Drop position not matching any tool card');
                 }
             }
         });

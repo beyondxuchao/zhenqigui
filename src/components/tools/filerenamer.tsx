@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Table, Button, Badge, Space, Input, Card, Radio, Checkbox, Flex, App } from 'antd';
-import { FileSyncOutlined, FolderOpenOutlined, InboxOutlined, DeleteOutlined } from '@ant-design/icons';
+import { FileSyncOutlined, FolderOpenOutlined, InboxOutlined, DeleteOutlined, UndoOutlined } from '@ant-design/icons';
 import { open } from '@tauri-apps/plugin-dialog';
 import { listen } from '@tauri-apps/api/event';
-import { listVideoFiles, renameFileDirect } from '../../services/api';
+import { listFiles, renameFileDirect } from '../../services/api';
 
 const { Text } = Typography;
 
@@ -26,6 +26,7 @@ const FileRenamer: React.FC<FileRenamerProps> = ({ initialFile }) => {
     const { message } = App.useApp();
     const [files, setFiles] = useState<RenameItem[]>([]);
     const [loading, setLoading] = useState(false);
+    const [history, setHistory] = useState<{ currentPath: string; targetName: string; }[][]>([]);
     
     // Batch Operation State
     const [mode, setMode] = useState<'replace' | 'remove' | 'prefix' | 'suffix' | 'direct'>('replace');
@@ -69,22 +70,22 @@ const FileRenamer: React.FC<FileRenamerProps> = ({ initialFile }) => {
             let allNewFiles: string[] = [];
             for (const p of paths) {
                 // Check if it's a directory or file
-                // For simplicity, we assume listVideoFiles handles both or we just try it.
-                // Actually listVideoFiles (in rust) scans a directory. 
+                // For simplicity, we assume listFiles handles both or we just try it.
+                // Actually listFiles (in rust) scans a directory. 
                 // If we pass a file path to it, it might fail or return nothing.
                 // But the previous implementation assumed it works for folders.
                 // Let's assume the backend handles it or we improve it later.
                 // Wait, previous implementation:
                 /*
                 for (const p of paths) {
-                    const f = await listVideoFiles(p);
+                    const f = await listFiles(p);
                     allNewFiles = [...allNewFiles, ...f];
                 }
                 */
-                // listVideoFiles scans recursively.
-                // If user drags a file, listVideoFiles might return empty if it expects a dir.
+                // listFiles scans recursively.
+                // If user drags a file, listFiles might return empty if it expects a dir.
                 // But let's keep original logic for now.
-                const f = await listVideoFiles(p);
+                const f = await listFiles(p);
                 allNewFiles = [...allNewFiles, ...f];
             }
             const uniqueNew = [...new Set(allNewFiles)];
@@ -136,7 +137,7 @@ const FileRenamer: React.FC<FileRenamerProps> = ({ initialFile }) => {
     const loadFiles = async (path: string) => {
         setLoading(true);
         try {
-            const videoPaths = await listVideoFiles(path);
+            const videoPaths = await listFiles(path);
             const items: RenameItem[] = videoPaths.map(p => {
                 const parts = p.split(/[/\\]/);
                 const name = parts[parts.length - 1];
@@ -237,6 +238,11 @@ const FileRenamer: React.FC<FileRenamerProps> = ({ initialFile }) => {
         }
     };
 
+    const getDirectory = (path: string) => {
+        const lastSepIndex = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+        return lastSepIndex > -1 ? path.substring(0, lastSepIndex + 1) : '';
+    };
+
     const executeRenameAll = async () => {
         const pendingFiles = files.filter(f => f.status === 'pending' && f.newName !== f.originalName);
         if (pendingFiles.length === 0) {
@@ -246,10 +252,21 @@ const FileRenamer: React.FC<FileRenamerProps> = ({ initialFile }) => {
 
         setLoading(true);
         let successCount = 0;
+        const currentBatch: { currentPath: string, targetName: string }[] = [];
         
         for (const file of pendingFiles) {
             try {
-                const newPath = await renameFileDirect(file.originalPath, file.newName);
+                await renameFileDirect(file.originalPath, file.newName);
+                
+                // Calculate newPath manually since backend returns void
+                const dir = getDirectory(file.originalPath);
+                const newPath = dir + file.newName;
+
+                // Add to batch for undo: revert from newPath to originalName
+                currentBatch.push({
+                    currentPath: newPath,
+                    targetName: file.originalName
+                });
                 
                 setFiles(prev => prev.map(f => {
                     if (f.key === file.key) {
@@ -273,10 +290,67 @@ const FileRenamer: React.FC<FileRenamerProps> = ({ initialFile }) => {
             }
         }
         
+        if (currentBatch.length > 0) {
+            setHistory(prev => [...prev, currentBatch]);
+        }
+        
         setLoading(false);
         if (successCount > 0) {
             message.success(`成功重命名 ${successCount} 个文件`);
         }
+    };
+
+    const handleUndo = async () => {
+        if (history.length === 0) return;
+
+        setLoading(true);
+        const lastBatch = history[history.length - 1];
+        let undoCount = 0;
+        const failedPaths: string[] = [];
+        const changes = new Map<string, { path: string, name: string }>();
+
+        // Process in reverse order
+        for (const item of [...lastBatch].reverse()) {
+            try {
+                // Rename from currentPath (new name) back to targetName (old name)
+                await renameFileDirect(item.currentPath, item.targetName);
+                
+                const dir = getDirectory(item.currentPath);
+                const restoredPath = dir + item.targetName;
+
+                changes.set(item.currentPath, { path: restoredPath, name: item.targetName });
+                undoCount++;
+            } catch (e) {
+                console.error("Undo failed for", item.currentPath, e);
+                failedPaths.push(item.currentPath);
+            }
+        }
+
+        if (undoCount > 0) {
+            setFiles(prev => prev.map(f => {
+                // f.originalPath is the current path (before undo) which matches item.currentPath
+                const change = changes.get(f.originalPath);
+                if (change) {
+                    return {
+                        ...f,
+                        status: 'pending',
+                        originalPath: change.path,
+                        originalName: change.name,
+                        newName: change.name 
+                    };
+                }
+                return f;
+            }));
+            
+            setHistory(prev => prev.slice(0, -1));
+            message.success(`成功撤销 ${undoCount} 个文件的重命名`);
+        }
+
+        if (failedPaths.length > 0) {
+            message.warning(`${failedPaths.length} 个文件撤销失败`);
+        }
+        
+        setLoading(false);
     };
     
     const removeFile = (key: string) => {
@@ -399,7 +473,15 @@ const FileRenamer: React.FC<FileRenamerProps> = ({ initialFile }) => {
             </div>
             
             <div style={{ marginTop: 16, textAlign: 'right' }}>
-                <Button type="primary" size="large" icon={<FileSyncOutlined />} onClick={executeRenameAll} disabled={files.length === 0}>
+                <Button 
+                    icon={<UndoOutlined />} 
+                    onClick={handleUndo} 
+                    disabled={history.length === 0 || loading} 
+                    style={{ marginRight: 8 }}
+                >
+                    撤销上一步
+                </Button>
+                <Button type="primary" size="large" icon={<FileSyncOutlined />} onClick={executeRenameAll} disabled={files.length === 0 || loading}>
                     执行批量重命名
                 </Button>
             </div>

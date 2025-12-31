@@ -123,8 +123,8 @@ export const renameMovieFile = async (id: number, newName: string): Promise<void
     return invoke('rename_movie_file', { id, newName });
 };
 
-export const listVideoFiles = async (path: string): Promise<string[]> => {
-    return invoke('list_video_files', { path });
+export const listFiles = async (path: string): Promise<string[]> => {
+    return invoke('list_dir_files', { path });
 };
 
 export const renameFileDirect = async (path: string, newName: string): Promise<string> => {

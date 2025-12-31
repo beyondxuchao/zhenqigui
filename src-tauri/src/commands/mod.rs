@@ -274,40 +274,72 @@ pub fn get_app_info(state: State<Database>) -> crate::models::AppInfo {
 }
 
 #[tauri::command]
-pub async fn add_movie(state: State<'_, Database>, mut movie: Movie) -> Result<Movie, String> {
-    let config = state.get_config();
-    let db_root = state.get_root_dir();
-    
-    // Poster
-    if let Some(url) = &movie.poster_path {
-        if let Some(local) = download_and_save_image(url, "posters", &config, &db_root).await {
-            movie.poster_path = Some(local);
-        }
-    }
-    
-    // Actors
-    for actor in &mut movie.actors {
-        if let Some(url) = &actor.profile_path {
-            if let Some(local) = download_and_save_image(url, "actors", &config, &db_root).await {
-                actor.profile_path = Some(local);
-            }
-        }
-    }
-    
-    // Directors
-    for director in &mut movie.directors {
-         if let Some(url) = &director.profile_path {
-            if let Some(local) = download_and_save_image(url, "directors", &config, &db_root).await {
-                director.profile_path = Some(local);
-            }
-        }
-    }
-
-    // 1. Add movie to database first to get an ID
+pub async fn add_movie(state: State<'_, Database>, movie: Movie) -> Result<Movie, String> {
+    // 1. Add movie to database FIRST to get an ID and return immediately
+    // This stores remote URLs initially, which frontend can display
     let added_movie = state.add_movie(movie).map_err(|e| e.to_string())?;
+
+    // 2. Clone state (Database) for background task
+    let db = state.inner().clone();
+    
+    // 3. Clone movie data needed for download
+    let mut movie_to_process = added_movie.clone();
+
+    // 4. Spawn background task
+    tauri::async_runtime::spawn(async move {
+        let config = db.get_config();
+        let db_root = db.get_root_dir();
+        let mut updated = false;
+
+        // Poster
+        if let Some(url) = &movie_to_process.poster_path {
+             if let Some(local) = download_and_save_image(url, "posters", &config, &db_root).await {
+                 movie_to_process.poster_path = Some(local);
+                 updated = true;
+             }
+        }
+        
+        // Actors
+        for actor in &mut movie_to_process.actors {
+            if let Some(url) = &actor.profile_path {
+                if let Some(local) = download_and_save_image(url, "actors", &config, &db_root).await {
+                    actor.profile_path = Some(local);
+                    updated = true;
+                }
+            }
+        }
+        
+        // Directors
+        for director in &mut movie_to_process.directors {
+             if let Some(url) = &director.profile_path {
+                if let Some(local) = download_and_save_image(url, "directors", &config, &db_root).await {
+                    director.profile_path = Some(local);
+                    updated = true;
+                }
+            }
+        }
+
+        if updated {
+            // Update DB
+            let actors_json = serde_json::to_string(&movie_to_process.actors).unwrap_or_default();
+            let directors_json = serde_json::to_string(&movie_to_process.directors).unwrap_or_default();
+            
+            if let Err(e) = db.update_movie_images(
+                movie_to_process.id, 
+                movie_to_process.poster_path, 
+                actors_json, 
+                directors_json
+            ) {
+                eprintln!("Failed to update movie images in background: {}", e);
+            } else {
+                println!("Background image download completed for movie: {}", movie_to_process.title);
+            }
+        }
+    });
 
     Ok(added_movie)
 }
+
 
 #[tauri::command]
 pub async fn auto_match_movie(state: State<'_, Database>, movie_id: u64) -> Result<(), String> {
@@ -1242,18 +1274,14 @@ pub fn rename_movie_file(path: String, new_name: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn list_video_files(dir: String) -> Result<Vec<String>, String> {
+pub fn list_dir_files(path: String) -> Result<Vec<String>, String> {
     let mut files = Vec::new();
-    if let Ok(entries) = fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            if let Ok(file_type) = entry.file_type() {
-                if file_type.is_file() {
-                    if let Some(name) = entry.file_name().to_str() {
-                        if name.ends_with(".mp4") || name.ends_with(".mkv") || name.ends_with(".avi") {
-                            files.push(entry.path().to_string_lossy().to_string());
-                        }
-                    }
-                }
+    let entries = fs::read_dir(&path).map_err(|e| e.to_string())?;
+    
+    for entry in entries.flatten() {
+        if let Ok(file_type) = entry.file_type() {
+            if file_type.is_file() {
+                files.push(entry.path().to_string_lossy().to_string());
             }
         }
     }
