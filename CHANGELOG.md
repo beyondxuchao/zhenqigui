@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.1] - 2025-12-31
+
+### Optimized
+- **Add Movie Speed**: 优化了添加影视的响应速度。现在点击添加后立即完成，海报和演职员图片下载在后台静默执行，不再阻塞界面。
+
+### Fixed
+- **Build Issues**: 修复了打包时的 TypeScript 编译错误 (`tools.tsx`)。
+- **Database Stability**: 修复了数据库连接的线程安全问题 (`Arc<Mutex>`) 和生命周期错误 (`E0521`, `E0716`)，提高了应用稳定性。
+
 ## [1.0.0] - 2025-12-30
 
 ### Added
