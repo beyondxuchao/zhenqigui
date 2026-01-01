@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.2] - 2026-01-01
+
+### Added
+- **Subtitle Converter**: 新增字幕格式转换工具，支持 ASS/SSA/SRT/VTT 互转，以及批量转换为 TXT 纯文本。
+
+### Refactored
+- **Backend Modularity**: 重构 Rust 后端代码，将 `commands/mod.rs` 拆分为 `media`, `files`, `movie`, `common`, `app`, `registry`, `tmdb` 等独立模块，提升代码可维护性。
+
+### Fixed
+- **UI/UX**: 修复字幕转换工具在暗色模式下的显示问题及拖拽区域错位。
+- **Deprecations**: 替换废弃的 Ant Design 组件 (`List`, `Input.addonBefore`)。
+
 ## [1.0.1] - 2025-12-31
 
 ### Optimized

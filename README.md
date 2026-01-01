@@ -14,6 +14,7 @@
   - **视频转码**: 快速将 MKV 等格式封装或转码为 MP4。
   - **字幕提取**: 一键提取视频文件中的内封字幕。
   - **音频分离**: 从视频中无损提取音频轨道。
+  - **字幕转换**: 支持 ASS/SSA/SRT/VTT 格式互转及转换为 TXT 纯文本。
   - **媒体信息**: 查看详细的音视频编码参数。
   - **批量重命名**: 强大的文件名批量处理工具。
 - **轻量高效**: 基于 Tauri 2.0 构建，跨平台（Windows），启动快，资源占用低。
@@ -62,7 +63,7 @@ npm run tauri build
   - `components/`: 通用组件
   - `services/`: API 服务调用
 - `src-tauri/`: 后端 Rust 代码
-  - `src/commands/`: Tauri 命令实现
+  - `src/commands/`: Tauri 命令实现（模块化：media, files, movie, usn 等）
   - `src/models/`: 数据模型
 
 ## 📄 许可证
