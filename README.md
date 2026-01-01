@@ -21,7 +21,25 @@
 
 ## 📸 软件截图
 
-> 截图补充中... (请将截图文件放入项目并在 README 中引用)
+| 主页 (Light) | 主页 (Dark) |
+| :---: | :---: |
+| ![Home](screenshots/home.png) | ![Home Dark](screenshots/home-dark.png) |
+
+| 素材匹配 | 素材详情 |
+| :---: | :---: |
+| ![Match](screenshots/pipei.png) | ![Match Detail](screenshots/pipei2.png) |
+
+| 日历视图 | 任务列表 |
+| :---: | :---: |
+| ![Calendar](screenshots/rili1.png) | ![Calendar List](screenshots/rili2.png) |
+
+| 工具箱 | 统计 |
+| :---: | :---: |
+| ![Tools](screenshots/tools.png) | ![Statistics](screenshots/tongji.png) |
+
+| 设置 |
+| :---: |
+| ![Settings](screenshots/shezhi.png) |
 
 ## 🛠️ 技术栈
 
