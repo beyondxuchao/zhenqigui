@@ -148,8 +148,32 @@ export const extractAudio = async (input: string, output: string): Promise<void>
     return await invoke('extract_audio', { input, output });
 };
 
-export const extractSubtitles = async (input: string, outputDir: string): Promise<string[]> => {
-    return await invoke('extract_subtitles', { input, outputDir });
+export interface SubtitleTrack {
+    index: number;
+    codec: string;
+    language: string;
+    title?: string;
+}
+
+export const getSubtitleTracks = async (path: string): Promise<SubtitleTrack[]> => {
+    return await invoke('get_subtitle_tracks', { path });
+};
+
+export const extractSubtitles = async (
+    input: string, 
+    outputDir: string, 
+    selectedTracks?: number[], 
+    convertToSrt?: boolean
+): Promise<string[]> => {
+    return await invoke('extract_subtitles', { input, outputDir, selectedTracks, convertToSrt });
+};
+
+export const convertSrtToTxt = async (path: string): Promise<string> => {
+    return await invoke('convert_srt_to_txt', { path });
+};
+
+export const convertSubtitleFile = async (inputPath: string, targetFormat: string): Promise<string> => {
+    return await invoke('convert_subtitle_file', { inputPath, targetFormat });
 };
 
 export const searchUsnJournal = async (volume: string, keyword: string): Promise<string[]> => {

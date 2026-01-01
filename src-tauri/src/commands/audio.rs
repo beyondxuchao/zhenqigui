@@ -2,7 +2,7 @@ use tauri::{State, AppHandle};
 use crate::db::Database;
 use serde::{Deserialize, Serialize};
 use rusqlite::params;
-use crate::commands::run_media_tool;
+use crate::commands::media::run_media_tool;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AudioPreset {

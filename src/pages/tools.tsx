@@ -13,6 +13,7 @@ import FileRenamer from '../components/tools/filerenamer';
 import MediaInfo from '../components/tools/mediainfo';
 import Transcoder from '../components/tools/transcoder';
 import SubtitleTool from '../components/tools/subtitletool';
+import SubtitleConverter from '../components/tools/subtitleconverter';
 import AudioExtractor from '../components/tools/audioextractor';
 import AudioProcessor from '../components/tools/audioprocessor';
 
@@ -66,6 +67,14 @@ const Tools: React.FC = () => {
             description: '提取 MKV 视频中的内封字幕文件',
             icon: <FontSizeOutlined style={{ fontSize: 32, color: '#722ed1' }} />,
             component: <SubtitleTool />,
+            width: 600
+        },
+        {
+            id: 'subtitleconverter',
+            title: '字幕格式转换',
+            description: 'ASS/SSA/SRT 等格式互转，或转换为纯文本',
+            icon: <FileTextOutlined style={{ fontSize: 32, color: '#eb2f96' }} />,
+            component: <SubtitleConverter />,
             width: 600
         },
         {

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Button, App, List, Space, theme, Form, Input, Progress, Steps } from 'antd';
-import { InboxOutlined, FileTextOutlined, DownloadOutlined, FolderOpenOutlined, CheckCircleOutlined, SwapOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { Card, Typography, Button, App, Space, theme, Form, Input, Progress, Steps, Table, Checkbox, Tag, Tooltip } from 'antd';
+import { InboxOutlined, FileTextOutlined, DownloadOutlined, FolderOpenOutlined, CheckCircleOutlined, SwapOutlined, CloseCircleOutlined, FileSyncOutlined } from '@ant-design/icons';
 import { listen } from '@tauri-apps/api/event';
-import { extractSubtitles, openFileWithPlayer } from '../../services/api';
+import { extractSubtitles, openFileWithPlayer, getSubtitleTracks, SubtitleTrack, convertSrtToTxt } from '../../services/api';
 import { open } from '@tauri-apps/plugin-dialog';
 
 const { Text, Title, Paragraph } = Typography;
@@ -38,9 +38,14 @@ const SubtitleTool: React.FC<SubtitleToolProps> = ({ initialFile }) => {
     const [outputDir, setOutputDir] = useState<string>(initOutputDir());
     const [extractedFiles, setExtractedFiles] = useState<string[]>([]);
     const [processing, setProcessing] = useState(false);
+    const [scanning, setScanning] = useState(false);
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState<'wait' | 'process' | 'finish' | 'error'>('wait');
     const [currentStep, setCurrentStep] = useState(initialFile ? 1 : 0);
+    
+    const [tracks, setTracks] = useState<SubtitleTrack[]>([]);
+    const [selectedTrackIndices, setSelectedTrackIndices] = useState<React.Key[]>([]);
+    const [convertToSrt, setConvertToSrt] = useState(false);
 
     useEffect(() => {
         if (initialFile) {
@@ -49,20 +54,25 @@ const SubtitleTool: React.FC<SubtitleToolProps> = ({ initialFile }) => {
     }, [initialFile]);
 
     useEffect(() => {
-        const unlisten = listen('tauri://drag-drop', (event) => {
-            if (processing) return;
+        const unlistenDrop = listen('tauri://drag-drop', (event) => {
+            if (processing || scanning) return;
             const payload = event.payload as { paths: string[] };
             if (payload.paths && payload.paths.length > 0) {
                 handleFileSelect(payload.paths[0]);
             }
         });
 
-        return () => {
-            unlisten.then(f => f());
-        };
-    }, [processing]);
+        const unlistenProgress = listen('extract-progress', (event) => {
+             setProgress(event.payload as number);
+        });
 
-    const handleFileSelect = (path: string) => {
+        return () => {
+            unlistenDrop.then(f => f());
+            unlistenProgress.then(f => f());
+        };
+    }, [processing, scanning]);
+
+    const handleFileSelect = async (path: string) => {
         const parts = path.split(/[/\\]/);
         const name = parts[parts.length - 1];
         const dir = path.substring(0, path.lastIndexOf(name));
@@ -71,6 +81,20 @@ const SubtitleTool: React.FC<SubtitleToolProps> = ({ initialFile }) => {
         setOutputDir(dir);
         setCurrentStep(1);
         setStatus('wait');
+        
+        // Scan for tracks
+        setScanning(true);
+        try {
+            const foundTracks = await getSubtitleTracks(path);
+            setTracks(foundTracks);
+            // Default select all
+            setSelectedTrackIndices(foundTracks.map(t => t.index));
+        } catch (err: any) {
+            message.error('无法读取字幕流: ' + err.toString());
+            setTracks([]);
+        } finally {
+            setScanning(false);
+        }
     };
 
     const handleSelectOutputDir = async () => {
@@ -90,40 +114,61 @@ const SubtitleTool: React.FC<SubtitleToolProps> = ({ initialFile }) => {
 
     const handleExtract = async () => {
         if (!file || !outputDir) return;
+        if (selectedTrackIndices.length === 0) {
+            message.warning('请至少选择一个字幕轨道');
+            return;
+        }
 
         setProcessing(true);
         setStatus('process');
         setCurrentStep(2);
         setProgress(0);
         
-        // Simulate progress
-        const timer = setInterval(() => {
-            setProgress(prev => {
-                if (prev >= 90) return 90;
-                return prev + 10;
-            });
-        }, 200);
-        
         try {
-            const results = await extractSubtitles(file.path, outputDir);
-            clearInterval(timer);
+            // Use selected indices
+            const selectedIndices = selectedTrackIndices.map(k => Number(k));
+            const results = await extractSubtitles(file.path, outputDir, selectedIndices, convertToSrt);
             setProgress(100);
             
             if (results.length === 0) {
-                message.warning('未在文件中发现可提取的字幕流');
-                setStatus('error'); // Technically not an error, but no result
+                message.warning('未成功提取文件');
+                setStatus('error');
             } else {
                 setExtractedFiles(results);
                 setStatus('finish');
                 message.success(`成功提取 ${results.length} 个字幕文件`);
             }
         } catch (error: any) {
-            clearInterval(timer);
             setStatus('error');
             console.error(error);
             message.error('提取失败: ' + error.toString());
         } finally {
             setProcessing(false);
+        }
+    };
+
+    const handleConvertToTxt = async (filename: string) => {
+        try {
+            // Construct full path. filename is just the name returned by extractSubtitles?
+            // Wait, extractSubtitles returns filename only, not full path in my modification?
+            // Looking at Rust code: `extracted.push(file_name);` where file_name is just name.
+            // So we need to join with outputDir.
+            // But wait, path separators might be tricky.
+            // Let's try to assume outputDir + filename.
+            
+            // Actually, in Rust: `let out_path = Path::new(&output_dir).join(&file_name);`
+            // So the filename is relative.
+            
+            // To be safe, we might need a join helper or just use string concat if we know OS.
+            // Since this is Windows/Tauri, backslash is likely.
+            
+            const separator = outputDir.endsWith('\\') || outputDir.endsWith('/') ? '' : '\\';
+            const fullPath = `${outputDir}${separator}${filename}`;
+            
+            await convertSrtToTxt(fullPath);
+            message.success('已转换为 TXT');
+        } catch (e: any) {
+            message.error('转换失败: ' + e.toString());
         }
     };
 
@@ -151,6 +196,8 @@ const SubtitleTool: React.FC<SubtitleToolProps> = ({ initialFile }) => {
         setStatus('wait');
         setProgress(0);
         setExtractedFiles([]);
+        setTracks([]);
+        setSelectedTrackIndices([]);
     };
 
     const renderUpload = () => (
@@ -175,7 +222,7 @@ const SubtitleTool: React.FC<SubtitleToolProps> = ({ initialFile }) => {
     );
 
     const renderConfig = () => (
-        <div style={{ maxWidth: 600, margin: '0 auto' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
             <Card title="提取配置" variant="borderless" style={{ boxShadow: token.boxShadowTertiary }}>
                 <Form layout="vertical">
                     <Form.Item label="已选文件">
@@ -186,15 +233,54 @@ const SubtitleTool: React.FC<SubtitleToolProps> = ({ initialFile }) => {
                         </div>
                     </Form.Item>
                     
-                    <Form.Item label="输出目录">
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <Input value={outputDir} onChange={e => setOutputDir(e.target.value)} />
-                            <Button icon={<FolderOpenOutlined />} onClick={handleSelectOutputDir}>选择</Button>
-                        </div>
+                    <Form.Item label="字幕轨道选择">
+                        <Table 
+                            dataSource={tracks}
+                            rowKey="index"
+                            size="small"
+                            pagination={false}
+                            loading={scanning}
+                            rowSelection={{
+                                selectedRowKeys: selectedTrackIndices,
+                                onChange: (keys) => setSelectedTrackIndices(keys),
+                            }}
+                            columns={[
+                                { title: 'ID', dataIndex: 'index', width: 60 },
+                                { title: '语言', dataIndex: 'language', width: 100 },
+                                { title: '格式', dataIndex: 'codec', width: 100, render: (t) => <Tag>{t}</Tag> },
+                                { title: '标题', dataIndex: 'title', ellipsis: true },
+                            ]}
+                            scroll={{ y: 240 }}
+                            style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 6 }}
+                        />
                     </Form.Item>
 
-                    <Form.Item style={{ marginTop: 32, textAlign: 'center' }}>
-                        <Button type="primary" size="large" onClick={handleExtract} icon={<DownloadOutlined />} loading={processing} style={{ minWidth: 120 }}>
+                    <Form.Item label="输出设置">
+                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <Space.Compact style={{ width: '100%' }}>
+                                <Button disabled style={{ cursor: 'default', color: token.colorText }}>输出目录</Button>
+                                <Input value={outputDir} onChange={e => setOutputDir(e.target.value)} />
+                                <Button icon={<FolderOpenOutlined />} onClick={handleSelectOutputDir}>选择</Button>
+                            </Space.Compact>
+                            <Checkbox 
+                                checked={convertToSrt} 
+                                onChange={e => setConvertToSrt(e.target.checked)}
+                            >
+                                强制转换 ASS/SSA 为 SRT 格式 (纯文本)
+                            </Checkbox>
+                         </div>
+                    </Form.Item>
+
+                    <Form.Item style={{ marginTop: 24, textAlign: 'center' }}>
+                        <Button 
+                            type="primary" 
+                            size="large" 
+                            onClick={handleExtract} 
+                            icon={<DownloadOutlined />} 
+                            loading={processing || scanning} 
+                            disabled={selectedTrackIndices.length === 0}
+                            style={{ minWidth: 120 }}
+                        >
                             开始提取
                         </Button>
                     </Form.Item>
@@ -208,7 +294,7 @@ const SubtitleTool: React.FC<SubtitleToolProps> = ({ initialFile }) => {
              {status === 'process' && (
                 <>
                     <Title level={4} style={{ marginTop: 24 }}>正在扫描并提取字幕...</Title>
-                    <Paragraph type="secondary">正在分析 MKV 文件结构</Paragraph>
+                    <Paragraph type="secondary">正在处理 {selectedTrackIndices.length} 个字幕轨道</Paragraph>
                     <Progress percent={progress} status="active" />
                 </>
              )}
@@ -219,13 +305,30 @@ const SubtitleTool: React.FC<SubtitleToolProps> = ({ initialFile }) => {
                     <Title level={3} style={{ marginTop: 16 }}>提取完成</Title>
                     <Paragraph>成功提取 {extractedFiles.length} 个字幕文件：</Paragraph>
                     
-                    <List
-                        size="small"
-                        bordered
-                        dataSource={extractedFiles}
-                        renderItem={item => <List.Item><FileTextOutlined /> {item}</List.Item>}
-                        style={{ marginBottom: 24, textAlign: 'left', background: token.colorBgContainer }}
-                    />
+                    <div style={{ marginBottom: 24, textAlign: 'left', background: token.colorBgContainer, border: `1px solid ${token.colorBorder}`, borderRadius: 8 }}>
+                        {extractedFiles.map((item, index) => (
+                            <div 
+                                key={index} 
+                                style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    padding: '8px 16px',
+                                    borderBottom: index < extractedFiles.length - 1 ? `1px solid ${token.colorBorderSecondary}` : 'none'
+                                }}
+                            >
+                                <FileTextOutlined style={{ fontSize: 24, color: token.colorTextSecondary, marginRight: 12 }} />
+                                <Text ellipsis style={{ flex: 1, maxWidth: 400 }}>{item}</Text>
+                                <Tooltip title="转换为纯文本 TXT">
+                                    <Button 
+                                        type="text" 
+                                        size="small" 
+                                        icon={<FileSyncOutlined />} 
+                                        onClick={() => handleConvertToTxt(item)} 
+                                    />
+                                </Tooltip>
+                            </div>
+                        ))}
+                    </div>
                     
                     <Space>
                         <Button onClick={() => openFileWithPlayer(outputDir)}>打开文件夹</Button>
