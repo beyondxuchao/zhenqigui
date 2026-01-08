@@ -1,14 +1,13 @@
 # Changelog
 
+## [1.0.4] - 2026-01-08
+
+### Optimized
+- **交互体验**: 优化了人声分离 (Stem Separator) 工具的操作流程，新增处理状态指示与按钮防抖，防止重复操作导致的错误。
+- **性能优化**: 优化了 Whisper 字幕生成工具的组件加载逻辑，减少资源占用，提升运行稳定性。
+- **界面细节**: 统一了工具箱内各功能模块的 UI 风格，修复了部分组件在暗色模式下的显示异常。
+
 ## [1.0.3] - 2026-01-08
-
-### Added
-- **CI/CD**: 配置 GitHub Actions 自动构建与发布流程。
-- **Release**: 完善发布工作流，支持自动生成 Release 和安装包。
-
-### Fixed
-- **Type Safety**: 修复 `stemseparator.tsx` 和 `whisper.tsx` 中的 TypeScript 类型定义错误。
-- **Dependencies**: 修正 Ant Design 组件的引用问题。
 
 ## [1.0.2] - 2026-01-01
 
