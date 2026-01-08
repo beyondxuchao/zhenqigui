@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.3] - 2026-01-08
+
+### Added
+- **CI/CD**: 配置 GitHub Actions 自动构建与发布流程。
+- **Release**: 完善发布工作流，支持自动生成 Release 和安装包。
+
+### Fixed
+- **Type Safety**: 修复 `stemseparator.tsx` 和 `whisper.tsx` 中的 TypeScript 类型定义错误。
+- **Dependencies**: 修正 Ant Design 组件的引用问题。
+
 ## [1.0.2] - 2026-01-01
 
 ### Added
