@@ -102,6 +102,7 @@ const Settings: React.FC = () => {
         save_images_locally: values.save_images_locally !== undefined ? values.save_images_locally : (baseConfig?.save_images_locally ?? true),
         match_threshold: values.match_threshold ? values.match_threshold / 100 : (baseConfig?.match_threshold || 0.8),
         image_save_path: values.image_save_path !== undefined ? (values.image_save_path || null) : (baseConfig?.image_save_path || null),
+        ai_model_path: values.ai_model_path !== undefined ? (values.ai_model_path || null) : (baseConfig?.ai_model_path || null),
         default_monitor_folders: monitorFolders,
         monitor_folders_source: monitorFoldersSource,
         monitor_folders_finished: monitorFoldersFinished
@@ -198,6 +199,26 @@ const Settings: React.FC = () => {
               // Explicitly merge the new value to ensure performSave gets the updated path
               const currentValues = form.getFieldsValue();
               handleValuesChange({ image_save_path: selected }, { ...currentValues, image_save_path: selected });
+          }
+      } catch (error) {
+          message.error('无法打开文件夹选择框');
+      }
+  };
+
+  const handleSelectAiModelPath = async () => {
+      try {
+          const selected = await open({
+              directory: true,
+              multiple: false,
+              title: '选择 AI 模型存储文件夹'
+          });
+          
+          if (selected && typeof selected === 'string') {
+              form.setFieldsValue({ ai_model_path: selected });
+              // Explicitly merge the new value
+              const currentValues = form.getFieldsValue();
+              handleValuesChange({ ai_model_path: selected }, { ...currentValues, ai_model_path: selected });
+              message.success('已选择模型路径');
           }
       } catch (error) {
           message.error('无法打开文件夹选择框');
@@ -530,6 +551,29 @@ const Settings: React.FC = () => {
                                     }}>浏览...</Button>
                                 </Space.Compact>
                              </Form.Item>
+                        </Card>
+
+                        <Card title="AI 模型设置" size="small" variant="borderless">
+                             <Alert 
+                                title="AI 模型存储位置" 
+                                description="人声分离等 AI 功能需要下载较大的模型文件。您可以指定一个位置来存储这些模型，以免占用 C 盘空间。" 
+                                type="info" 
+                                showIcon 
+                                style={{ marginBottom: 16 }} 
+                             />
+                             <Form.Item label="模型存储路径" tooltip="请选择一个文件夹用于存储 AI 模型">
+                                <Space.Compact style={{ width: '100%' }}>
+                                    <Form.Item
+                                        name="ai_model_path"
+                                        noStyle
+                                    >
+                                        <Input 
+                                            placeholder="未设置 (将使用系统默认缓存路径)" 
+                                        />
+                                    </Form.Item>
+                                    <Button type="default" icon={<FolderOpenOutlined />} onClick={handleSelectAiModelPath}>浏览...</Button>
+                                </Space.Compact>
+                            </Form.Item>
                         </Card>
 
                         <Card title="本地播放器" size="small">

@@ -110,7 +110,7 @@ const MediaInfo: React.FC<MediaInfoProps> = ({ initialFile }) => {
                 key: 'audio',
                 label: `音频流 (${audioStreams.length})`,
                 children: audioStreams.map((s: any, i: number) => (
-                    <Card key={i} size="small" type="inner" title={`Stream #${s.index}`} style={{ marginBottom: 16 }}>
+                    <Card key={i} size="small" type="inner" title={`Stream #${s.index}`} variant="outlined" style={{ marginBottom: 16 }}>
                         <Descriptions bordered column={2} size="small">
                             <Descriptions.Item label="编码">{s.codec_name}</Descriptions.Item>
                             <Descriptions.Item label="声道">{s.channels} ({s.channel_layout})</Descriptions.Item>
@@ -125,7 +125,7 @@ const MediaInfo: React.FC<MediaInfoProps> = ({ initialFile }) => {
                 key: 'subtitle',
                 label: `字幕流 (${subtitleStreams.length})`,
                 children: subtitleStreams.map((s: any, i: number) => (
-                    <Card key={i} size="small" type="inner" title={`Stream #${s.index}`} style={{ marginBottom: 16 }}>
+                    <Card key={i} size="small" type="inner" title={`Stream #${s.index}`} variant="outlined" style={{ marginBottom: 16 }}>
                         <Descriptions bordered column={2} size="small">
                             <Descriptions.Item label="格式">{s.codec_name}</Descriptions.Item>
                             <Descriptions.Item label="语言">{s.tags?.language || 'und'}</Descriptions.Item>

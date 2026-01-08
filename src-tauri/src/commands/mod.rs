@@ -7,8 +7,9 @@ pub mod registry;
 pub mod tmdb;
 pub mod usn;
 pub mod audio;
+pub mod ai;
+pub mod whisper;
 
-pub use common::*;
 pub use files::*;
 pub use media::*;
 pub use movie::*;
@@ -17,3 +18,5 @@ pub use registry::*;
 pub use tmdb::*;
 pub use usn::*;
 pub use audio::*;
+pub use ai::*;
+pub use whisper::*;

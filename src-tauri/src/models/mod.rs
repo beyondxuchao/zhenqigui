@@ -76,6 +76,7 @@ pub struct AppConfig {
     pub monitor_folders_finished: Vec<String>,
     pub local_player_path: Option<String>,
     pub ffmpeg_path: Option<String>,
+    pub ai_model_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -108,6 +109,7 @@ impl Default for AppConfig {
             monitor_folders_finished: Vec::new(),
             local_player_path: None,
             ffmpeg_path: None,
+            ai_model_path: None,
         }
     }
 }

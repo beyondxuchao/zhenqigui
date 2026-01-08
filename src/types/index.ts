@@ -68,6 +68,7 @@ export interface AppConfig {
     monitor_folders_finished?: string[];
     local_player_path?: string;
     ffmpeg_path?: string;
+    ai_model_path?: string;
 }
 
 export interface AppInfo {

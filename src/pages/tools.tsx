@@ -16,6 +16,8 @@ import SubtitleTool from '../components/tools/subtitletool';
 import SubtitleConverter from '../components/tools/subtitleconverter';
 import AudioExtractor from '../components/tools/audioextractor';
 import AudioProcessor from '../components/tools/audioprocessor';
+import StemSeparator from '../components/tools/stemseparator';
+import WhisperTool from '../components/tools/whisper';
 
 const { Meta } = Card;
 
@@ -65,9 +67,17 @@ const Tools: React.FC = () => {
             id: 'subtitle',
             title: '字幕提取',
             description: '提取 MKV 视频中的内封字幕文件',
-            icon: <FontSizeOutlined style={{ fontSize: 32, color: '#722ed1' }} />,
+            icon: <FileTextOutlined style={{ fontSize: 32, color: '#722ed1' }} />,
             component: <SubtitleTool />,
             width: 600
+        },
+        {
+            id: 'whisper',
+            title: 'AI 字幕生成',
+            description: '使用 OpenAI Whisper 自动识别语音生成字幕',
+            icon: <FontSizeOutlined style={{ fontSize: 32, color: '#eb2f96' }} />,
+            component: <WhisperTool />,
+            width: 900
         },
         {
             id: 'subtitleconverter',
@@ -92,6 +102,14 @@ const Tools: React.FC = () => {
             icon: <AudioOutlined style={{ fontSize: 32, color: '#f5222d' }} />,
             component: <AudioProcessor />,
             width: 1000
+        },
+        {
+            id: 'stemseparator',
+            title: 'AI 人声分离',
+            description: '分离人声、伴奏、鼓点、贝斯 (Demucs v4)',
+            icon: <AudioOutlined style={{ fontSize: 32, color: '#52c41a' }} />,
+            component: <StemSeparator />,
+            width: 800
         }
     ], []);
 
