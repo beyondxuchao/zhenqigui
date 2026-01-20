@@ -40,10 +40,22 @@ pub struct TmdbGenre {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct TmdbSeason {
+    pub id: u64,
+    pub air_date: Option<String>,
+    pub episode_count: Option<u64>,
+    pub name: String,
+    pub overview: Option<String>,
+    pub poster_path: Option<String>,
+    pub season_number: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TmdbDetailResponse {
     pub credits: Option<TmdbCredits>,
     pub genres: Option<Vec<TmdbGenre>>,
     pub runtime: Option<u64>,
+    pub seasons: Option<Vec<TmdbSeason>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Modal, Form, Input, DatePicker, Rate, Select, App } from 'antd';
+import { Modal, Form, Input, DatePicker, Rate, Select, App, InputNumber } from 'antd';
 import dayjs from 'dayjs';
 import { Movie } from '../types';
 import { updateMovie } from '../services/api';
@@ -61,6 +61,18 @@ const MovieEditModal: React.FC<MovieEditModalProps> = ({ visible, movie, onCance
                 <Select.Option value="movie">电影</Select.Option>
                 <Select.Option value="tv">剧集</Select.Option>
             </Select>
+        </Form.Item>
+        <Form.Item 
+            noStyle 
+            shouldUpdate={(prevValues, currentValues) => prevValues.category !== currentValues.category}
+        >
+            {({ getFieldValue }) => 
+                getFieldValue('category') === 'tv' ? (
+                    <Form.Item name="season_number" label="季度">
+                        <InputNumber min={1} style={{ width: '100%' }} placeholder="例如：1" />
+                    </Form.Item>
+                ) : null
+            }
         </Form.Item>
         <Form.Item name="production_status" label="制作状态">
             <Select allowClear>

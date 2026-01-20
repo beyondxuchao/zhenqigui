@@ -18,6 +18,7 @@ import AudioExtractor from '../components/tools/audioextractor';
 import AudioProcessor from '../components/tools/audioprocessor';
 import StemSeparator from '../components/tools/stemseparator';
 import WhisperTool from '../components/tools/whisper';
+import UVRTool from '../components/tools/uvr';
 
 const { Meta } = Card;
 
@@ -94,6 +95,14 @@ const Tools: React.FC = () => {
             icon: <AudioOutlined style={{ fontSize: 32, color: '#eb2f96' }} />,
             component: <AudioExtractor />,
             width: 600
+        },
+        {
+            id: 'uvr',
+            title: 'UVR5 人声分离 (Beta)',
+            description: '基于 Ultimate Vocal Remover 5 的顶级分离模型',
+            icon: <AudioOutlined style={{ fontSize: 32, color: '#ff4d4f' }} />,
+            component: <UVRTool />,
+            width: 1000
         },
         {
             id: 'audioprocessor',

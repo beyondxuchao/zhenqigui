@@ -219,6 +219,7 @@ const Home: React.FC = () => {
             release_date: item.release_date || item.first_air_date,
             vote_average: item.vote_average,
             category: item.media_type || 'movie',
+            season_number: item.season_number,
             add_time: new Date().toISOString().split('T')[0],
             id: 0,
             local_video_path: item.local_video_path // Handle local path from folder scan

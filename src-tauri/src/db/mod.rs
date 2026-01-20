@@ -78,15 +78,27 @@ impl Database {
                 remark TEXT,
                 viewing_date TEXT,
                 category TEXT,
+                season_number INTEGER,
                 production_status TEXT,
                 matched_folders TEXT,
                 genres TEXT,
                 actors TEXT,
                 directors TEXT,
-                materialsvalue TEXT
+                materials TEXT
             )",
             [],
         )?;
+
+        {
+            // Migration: check if season_number column exists
+            let mut stmt = conn.prepare("PRAGMA table_info(movies)")?;
+            let columns: Vec<String> = stmt.query_map([], |row| row.get(1))?
+                .collect::<Result<Vec<_>, rusqlite::Error>>()?;
+            
+            if !columns.contains(&"season_number".to_string()) {
+                conn.execute("ALTER TABLE movies ADD COLUMN season_number INTEGER", [])?;
+            }
+        }
 
         conn.execute(
             "CREATE TABLE IF NOT EXISTS audio_presets (
@@ -166,9 +178,9 @@ impl Database {
             "INSERT INTO movies (
                 id, tmdb_id, title, original_title, overview, poster_path, release_date, 
                 vote_average, local_video_path, aliases, add_time, remark, viewing_date, 
-                category, production_status, matched_folders, genres, actors, directors, materials
+                category, season_number, production_status, matched_folders, genres, actors, directors, materials
             ) VALUES (
-                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20
+                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21
             )",
             params![
                 movie.id as i64,
@@ -185,6 +197,7 @@ impl Database {
                 movie.remark,
                 movie.viewing_date,
                 movie.category,
+                movie.season_number,
                 movie.production_status,
                 serde_json::to_string(&movie.matched_folders)?,
                 serde_json::to_string(&movie.genres)?,
@@ -264,15 +277,21 @@ impl Database {
     pub fn add_movie(&self, mut movie: Movie) -> Result<Movie> {
         let conn = self.conn.lock().unwrap();
         
-        // Check duplicates by TMDB ID if present
+        // Check duplicates by TMDB ID and Season Number if present
         if let Some(tmdb_id) = movie.tmdb_id {
+             let query = if movie.category.as_deref() == Some("tv") {
+                 "SELECT count(*) FROM movies WHERE tmdb_id = ?1 AND category = 'tv' AND (season_number = ?2 OR (season_number IS NULL AND ?2 IS NULL))"
+             } else {
+                 "SELECT count(*) FROM movies WHERE tmdb_id = ?1 AND category = 'movie'"
+             };
+
              let count: i64 = conn.query_row(
-                 "SELECT count(*) FROM movies WHERE tmdb_id = ?1",
-                 params![tmdb_id as i64],
+                 query,
+                 params![tmdb_id as i64, movie.season_number],
                  |row| row.get(0),
              )?;
              if count > 0 {
-                 return Err(anyhow::anyhow!("该影视已存在于库中"));
+                 return Err(anyhow::anyhow!("该影视（相同季度）已存在于库中"));
              }
         }
         
@@ -280,9 +299,9 @@ impl Database {
             "INSERT INTO movies (
                 tmdb_id, title, original_title, overview, poster_path, release_date, 
                 vote_average, local_video_path, aliases, add_time, remark, viewing_date, 
-                category, production_status, matched_folders, genres, actors, directors, materials
+                category, season_number, production_status, matched_folders, genres, actors, directors, materials
             ) VALUES (
-                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19
+                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20
             )",
             params![
                 movie.tmdb_id.map(|id| id as i64),
@@ -298,6 +317,7 @@ impl Database {
                 movie.remark,
                 movie.viewing_date,
                 movie.category,
+                movie.season_number,
                 movie.production_status,
                 serde_json::to_string(&movie.matched_folders)?,
                 serde_json::to_string(&movie.genres)?,
@@ -336,6 +356,7 @@ impl Database {
             remark: row.get("remark")?,
             viewing_date: row.get("viewing_date")?,
             category: row.get("category")?,
+            season_number: row.get("season_number")?,
             production_status: row.get("production_status")?,
             matched_folders: matched_folders_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default(),
             genres: genres_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default(),

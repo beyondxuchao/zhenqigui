@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { Modal, Input, Button, Card, Select, Form, Row, Col, Tabs, Table, Tag, App } from 'antd';
-import { SearchOutlined, FolderOpenOutlined, CloudDownloadOutlined, CheckCircleOutlined, CloseCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Modal, Input, Button, Card, Form, Row, Col, Tabs, Table, Tag, App } from 'antd';
+import { SearchOutlined, FolderOpenOutlined, CloudDownloadOutlined, CheckCircleOutlined, CloseCircleOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
 import { open } from '@tauri-apps/plugin-dialog';
-import { searchTmdbMovies, fetchDoubanSubject, scanForMovies } from '../services/api';
-import { TmdbMovie, Movie } from '../types';
+import { getTmdbDetails, searchTmdbMovies, scanForMovies } from '../services/api';
+import { TmdbMovie, Movie, TmdbSeason } from '../types';
 
-const { Option } = Select;
 
 interface TmdbSearchModalProps {
   visible: boolean;
@@ -19,10 +18,61 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
   const [results, setResults] = useState<(TmdbMovie | Movie)[]>([]);
   const [activeTab, setActiveTab] = useState('tmdb');
   
+  // Season Selection State
+  const [seasonModalVisible, setSeasonModalVisible] = useState(false);
+  const [currentTvShow, setCurrentTvShow] = useState<any>(null);
+  const [seasons, setSeasons] = useState<TmdbSeason[]>([]);
+  const [seasonsLoading, setSeasonsLoading] = useState(false);
+
   // Folder Scan State
   const [scannedFiles, setScannedFiles] = useState<any[]>([]);
   const [scanResults, setScanResults] = useState<any[]>([]); // { file: ScannedFile, match: TmdbMovie | null, status: 'pending' | 'matched' | 'failed' }
   const [scanning, setScanning] = useState(false);
+
+  const handleAddClick = async (item: any) => {
+    if (item.media_type === 'tv') {
+      setCurrentTvShow(item);
+      setSeasonModalVisible(true);
+      setSeasonsLoading(true);
+      try {
+        const details = await getTmdbDetails(item.id, 'tv');
+        if (details && details.seasons) {
+          // Include all seasons including specials (season_number 0)
+          setSeasons(details.seasons);
+        }
+      } catch (error) {
+        console.error('Fetch seasons failed:', error);
+        message.error('获取剧集季度信息失败');
+      } finally {
+        setSeasonsLoading(false);
+      }
+    } else {
+      onAdd(item);
+    }
+  };
+
+  const handleSeasonSelect = (season: TmdbSeason) => {
+    if (!currentTvShow) return;
+    
+    // Create a modified item with season info
+    const baseName = currentTvShow.name || currentTvShow.title;
+    const seasonSuffix = season.season_number === 0 ? '特别篇' : `第${season.season_number}季`;
+    
+    const itemWithSeason = {
+      ...currentTvShow,
+      season_number: season.season_number,
+      // Update title to new format: NameSeasonSuffix
+      name: `${baseName}${seasonSuffix}`,
+      // Use season poster if available
+      poster_path: season.poster_path || currentTvShow.poster_path,
+      // Use season air date
+      first_air_date: season.air_date || currentTvShow.first_air_date,
+      overview: season.overview || currentTvShow.overview
+    };
+    
+    onAdd(itemWithSeason);
+    setSeasonModalVisible(false);
+  };
 
   const handleSearch = async (values: any) => {
     if (!values.keyword) {
@@ -31,32 +81,14 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
     }
     setLoading(true);
     try {
-      if (activeTab === 'tmdb') {
-        const data = await searchTmdbMovies(values.keyword, 1);
-        // Client-side filtering
-        let filtered = data;
-        
-        // Filter by media type if selected
-        if (values.type) {
-             filtered = filtered.filter((m: any) => m.media_type === values.type);
-        }
-
-        if (values.year) {
-          filtered = filtered.filter((m: any) => (m.release_date || m.first_air_date)?.startsWith(values.year));
-        }
-        setResults(filtered);
-      } else {
-        // Douban search
-        let id = values.keyword;
-        // Try to extract ID from URL
-        const urlMatch = id.match(/subject\/(\d+)/);
-        if (urlMatch) {
-            id = urlMatch[1];
-        }
-        
-        const movie = await fetchDoubanSubject(id, values.type === 'tv');
-        setResults([movie]);
+      const data = await searchTmdbMovies(values.keyword, 1);
+      // Client-side filtering
+      let filtered = data.filter((m: any) => m.media_type === 'movie' || m.media_type === 'tv');
+      
+      if (values.year) {
+        filtered = filtered.filter((m: any) => (m.release_date || m.first_air_date)?.startsWith(values.year));
       }
+      setResults(filtered);
     } catch (error: any) {
       console.error(error);
       const errorMsg = typeof error === 'string' ? error : error?.message || '搜索失败，请检查网络或配置';
@@ -103,7 +135,8 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
           if (item.status === 'matched') continue; // Skip already matched
 
           try {
-              const matches = await searchTmdbMovies(item.file.search_query);
+              const data = await searchTmdbMovies(item.file.search_query);
+              const matches = data.filter((m: any) => m.media_type === 'movie' || m.media_type === 'tv');
               if (matches && matches.length > 0) {
                   // Prefer exact match if possible, otherwise first result
                   newResults[i].match = matches[0];
@@ -152,7 +185,8 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
 
   const handleManualSearch = async (index: number, query: string) => {
       try {
-          const matches = await searchTmdbMovies(query, 1);
+          const data = await searchTmdbMovies(query, 1);
+          const matches = data.filter((m: any) => m.media_type === 'movie' || m.media_type === 'tv');
           const newResults = [...scanResults];
           if (matches && matches.length > 0) {
               newResults[index].match = matches[0];
@@ -220,7 +254,11 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
                         key: 'match',
                         render: (match) => match ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <img src={getPosterUrl(match)} style={{ width: 40, height: 60, objectFit: 'cover', borderRadius: 4 }} />
+                                <img 
+                                    src={getPosterUrl(match)} 
+                                    referrerPolicy="no-referrer"
+                                    style={{ width: 40, height: 60, objectFit: 'cover', borderRadius: 4 }} 
+                                />
                                 <div>
                                     <div style={{ fontWeight: 'bold' }}>{match.title || match.name}</div>
                                     <div style={{ fontSize: 12, color: '#999' }}>{match.release_date || match.first_air_date}</div>
@@ -263,7 +301,6 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
         }}
         items={[
             { label: 'TMDB 搜索', key: 'tmdb' },
-            { label: '豆瓣添加', key: 'douban' },
             { label: '文件夹导入', key: 'folder' },
         ]}
         style={{ marginBottom: 16 }}
@@ -277,22 +314,14 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
             <Input 
                 size="large" 
                 prefix={<SearchOutlined />} 
-                placeholder={activeTab === 'tmdb' ? "输入影视名称搜索..." : "输入豆瓣ID或链接..."} 
+                placeholder="输入影视名称搜索..." 
             />
           </Form.Item>
           <Form.Item style={{ marginRight: 8 }}>
             <Button type="primary" htmlType="submit" size="large" loading={loading} style={{ width: 80 }}>
-              {activeTab === 'tmdb' ? '搜索' : '获取'}
+              搜索
             </Button>
           </Form.Item>
-           {(activeTab === 'tmdb' || activeTab === 'douban') && (
-               <Form.Item name="type" initialValue="movie">
-                <Select size="large" style={{ width: 100 }}>
-                    <Option value="movie">电影</Option>
-                    <Option value="tv">剧集</Option>
-                </Select>
-              </Form.Item>
-           )}
         </Form>
       </div>
 
@@ -303,32 +332,100 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
                 <Card
                   hoverable
                   styles={{ body: { padding: 0 } }}
-                  style={{ overflow: 'hidden', borderRadius: 8, border: '1px solid #f0f0f0' }}
+                  style={{ 
+                    overflow: 'hidden', 
+                    borderRadius: 10, 
+                    border: '1px solid #f0f0f0',
+                    transition: 'all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1)'
+                  }}
                 >
-                    <div style={{ display: 'flex', height: 160 }}>
-                        <div style={{ width: 106, flexShrink: 0 }}>
+                    <div style={{ display: 'flex', height: 160, position: 'relative' }}>
+                        <div style={{ width: 106, flexShrink: 0, position: 'relative' }}>
+                            {item.media_type && (
+                                <div style={{ 
+                                    position: 'absolute', 
+                                    top: 0, 
+                                    left: 0, 
+                                    backgroundColor: item.media_type === 'movie' ? 'rgba(22, 119, 255, 0.85)' : 'rgba(82, 196, 26, 0.85)', 
+                                    color: 'white', 
+                                    padding: '2px 8px', 
+                                    fontSize: '11px', 
+                                    borderBottomRightRadius: '10px',
+                                    zIndex: 1,
+                                    fontWeight: 600,
+                                    backdropFilter: 'blur(4px)'
+                                }}>
+                                    {item.media_type === 'movie' ? '电影' : '剧集'}
+                                </div>
+                            )}
                             <img 
-                                        alt={item.title || item.name} 
-                                        src={getPosterUrl(item)} 
-                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                        referrerPolicy="no-referrer"
-                                    />
+                                alt={item.title || item.name} 
+                                src={getPosterUrl(item)} 
+                                referrerPolicy="no-referrer"
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = 'https://via.placeholder.com/300x450?text=No+Image';
+                                }}
+                            />
                         </div>
-                        <div style={{ flex: 1, padding: 12, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                        <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                             <div>
-                                <div style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 4, lineHeight: '1.2em', maxHeight: '2.4em', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }} title={item.title || item.name}>
+                                <div style={{ 
+                                    fontSize: 15, 
+                                    fontWeight: 600, 
+                                    marginBottom: 6, 
+                                    lineHeight: '1.3em', 
+                                    color: '#262626',
+                                    maxHeight: '2.6em', 
+                                    overflow: 'hidden', 
+                                    textOverflow: 'ellipsis', 
+                                    display: '-webkit-box', 
+                                    WebkitLineClamp: 2, 
+                                    WebkitBoxOrient: 'vertical' 
+                                }} title={item.title || item.name}>
                                     {item.title || item.name}
                                 </div>
-                                <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>
+                                <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 6 }}>
                                     {item.release_date || item.first_air_date || '未知年份'}
+                                    {(item.original_title || item.original_name) && (item.original_title || item.original_name) !== (item.title || item.name) && (
+                                        <span style={{ marginLeft: 8, color: '#bfbfbf', fontStyle: 'italic' }}>
+                                            {item.original_title || item.original_name}
+                                        </span>
+                                    )}
                                 </div>
-                                <div style={{ fontSize: 12, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.original_title || item.original_name}>
-                                    原名: {item.original_title || item.original_name}
-                                </div>
+                                {item.overview && (
+                                    <div style={{ 
+                                        fontSize: 12, 
+                                        color: '#595959', 
+                                        lineHeight: '1.5em',
+                                        maxHeight: '3em',
+                                        overflow: 'hidden', 
+                                        textOverflow: 'ellipsis', 
+                                        display: '-webkit-box', 
+                                        WebkitLineClamp: 2, 
+                                        WebkitBoxOrient: 'vertical',
+                                    }} title={item.overview}>
+                                        {item.overview}
+                                    </div>
+                                )}
                             </div>
-                            <Button type="primary" size="small" block onClick={() => onAdd(item)}>
-                                添加到本地
-                            </Button>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                <Button 
+                                    type="primary" 
+                                    size="small" 
+                                    icon={<PlusOutlined />}
+                                    onClick={() => handleAddClick(item)}
+                                    style={{ 
+                                        fontSize: '12px', 
+                                        borderRadius: '4px',
+                                        height: '28px',
+                                        padding: '0 10px'
+                                    }}
+                                >
+                                    添加
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </Card>
@@ -336,13 +433,63 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
             ))}
             {results.length === 0 && !loading && (
                 <div style={{ width: '100%', textAlign: 'center', marginTop: 40, color: '#999' }}>
-                    {activeTab === 'tmdb' ? '请输入关键词搜索添加' : '请输入豆瓣ID或链接获取'}
+                    请输入关键词搜索添加
                 </div>
             )}
           </Row>
       </div>
       </>
       )}
+
+      <Modal
+        title={`选择季度 - ${currentTvShow?.name || currentTvShow?.title}`}
+        open={seasonModalVisible}
+        onCancel={() => setSeasonModalVisible(false)}
+        footer={null}
+        width={600}
+        styles={{ body: { maxHeight: '60vh', overflowY: 'auto' } }}
+      >
+        {seasonsLoading ? (
+            <div style={{ textAlign: 'center', padding: '20px' }}>正在加载季度信息...</div>
+        ) : (
+            <Row gutter={[16, 16]}>
+                {seasons.map((season) => (
+                    <Col span={12} key={season.id}>
+                        <Card 
+                            hoverable 
+                            size="small"
+                            onClick={() => handleSeasonSelect(season)}
+                            styles={{ body: { padding: 8 } }}
+                        >
+                            <div style={{ display: 'flex', gap: 12 }}>
+                                <img 
+                                    src={season.poster_path ? `https://image.tmdb.org/t/p/w154${season.poster_path}` : 'https://via.placeholder.com/154x231?text=No+Poster'} 
+                                    style={{ width: 60, height: 90, objectFit: 'cover', borderRadius: 4 }}
+                                />
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 'bold', fontSize: 14 }}>{season.name}</div>
+                                    <div style={{ fontSize: 12, color: '#8c8c8c', margin: '4px 0' }}>
+                                        {season.episode_count} 集 · {season.air_date?.split('-')[0] || '未知'}
+                                    </div>
+                                    <div style={{ 
+                                        fontSize: 12, 
+                                        color: '#595959', 
+                                        overflow: 'hidden', 
+                                        textOverflow: 'ellipsis', 
+                                        display: '-webkit-box', 
+                                        WebkitLineClamp: 2, 
+                                        WebkitBoxOrient: 'vertical' 
+                                    }}>
+                                        {season.overview || '暂无简介'}
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+                    </Col>
+                ))}
+            </Row>
+        )}
+      </Modal>
     </Modal>
   );
 };

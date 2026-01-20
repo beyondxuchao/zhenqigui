@@ -16,6 +16,7 @@ pub struct Movie {
     pub remark: Option<String>,
     pub viewing_date: Option<String>,
     pub category: Option<String>, // "movie" or "tv"
+    pub season_number: Option<u32>,
     pub production_status: Option<String>, // "made", "unmade", "pending"
     #[serde(default)]
     pub matched_folders: Vec<String>, // Folders manually added/scanned for this movie

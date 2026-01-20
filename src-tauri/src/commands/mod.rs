@@ -9,6 +9,7 @@ pub mod usn;
 pub mod audio;
 pub mod ai;
 pub mod whisper;
+pub mod uvr;
 
 pub use files::*;
 pub use media::*;
@@ -20,3 +21,4 @@ pub use usn::*;
 pub use audio::*;
 pub use ai::*;
 pub use whisper::*;
+pub use uvr::*;

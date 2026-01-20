@@ -13,6 +13,7 @@ export interface Movie {
     remark?: string;
     viewing_date?: string;
     category?: string; // 'movie' | 'tv'
+    season_number?: number;
     production_status?: string; // 'made' | 'unmade' | 'pending'
     matched_folders?: string[]; // Folders manually added/scanned for this movie
     genres?: string[];
@@ -40,6 +41,18 @@ export interface TmdbMovie {
     first_air_date?: string;
     vote_average?: number;
     media_type?: string;
+    season_number?: number;
+}
+
+export interface TmdbSeason {
+    id: number;
+    air_date?: string;
+    episode_count: number;
+    name: string;
+    overview: string;
+    poster_path?: string;
+    season_number: number;
+    vote_average?: number;
 }
 
 export interface TmdbConfig {
