@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, CSSProperties } from 'react';
-import { Empty, Button, Card, Tag, Rate, Tooltip, Select, Space, Badge, Skeleton, App } from 'antd';
-import { PlusOutlined, EditOutlined, FolderOpenOutlined, DeleteOutlined, ExclamationCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Empty, Button, Card, Tag, Rate, Tooltip, Select, Space, Badge, Skeleton, App, Input, theme } from 'antd';
+import { PlusOutlined, EditOutlined, FolderOpenOutlined, DeleteOutlined, ExclamationCircleOutlined, CheckCircleOutlined, SearchOutlined, FilterOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FixedSizeGrid as Grid } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
@@ -31,6 +31,7 @@ interface MovieCellProps {
 }
 
 const MovieCell: React.FC<MovieCellProps> = ({ columnIndex, rowIndex, style, data }) => {
+    const { token: { colorSuccess, colorWarning } } = theme.useToken();
     const { movies, columnCount, navigate, handleToggleStatus, setEditingMovie, handleDelete } = data;
     const index = rowIndex * columnCount + columnIndex;
     
@@ -51,7 +52,7 @@ const MovieCell: React.FC<MovieCellProps> = ({ columnIndex, rowIndex, style, dat
             }}>
             <Badge.Ribbon 
                 text="已制作" 
-                color="green" 
+                color="success" 
                 style={{ display: item.production_status === 'made' ? 'block' : 'none' }}
             >
             <Card
@@ -62,7 +63,7 @@ const MovieCell: React.FC<MovieCellProps> = ({ columnIndex, rowIndex, style, dat
                         <Button 
                             type="text" 
                             size="small" 
-                            icon={item.production_status === 'made' ? <CheckCircleOutlined style={{ color: '#52c41a' }} /> : <CheckCircleOutlined />} 
+                            icon={item.production_status === 'made' ? <CheckCircleOutlined style={{ color: colorSuccess }} /> : <CheckCircleOutlined />} 
                             onClick={(e) => { e.stopPropagation(); handleToggleStatus(item); }} 
                         />
                     </Tooltip>,
@@ -78,10 +79,10 @@ const MovieCell: React.FC<MovieCellProps> = ({ columnIndex, rowIndex, style, dat
                 description={
                 <div style={{ marginTop: 8 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Tag color="blue" style={{ margin: 0, fontSize: 10, lineHeight: '18px', padding: '0 4px' }}>{item.release_date?.split('-')[0] || '未知'}</Tag>
+                        <Tag color="processing" style={{ margin: 0, fontSize: 10, lineHeight: '18px', padding: '0 4px' }}>{item.release_date?.split('-')[0] || '未知'}</Tag>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                             <Rate disabled defaultValue={(item.vote_average || 0) / 2} style={{ fontSize: 10, marginRight: 4 }} count={1} />
-                            <span style={{ fontSize: 10, color: '#fadb14' }}>{item.vote_average?.toFixed(1) || '0.0'}</span>
+                            <span style={{ fontSize: 10, color: colorWarning }}>{item.vote_average?.toFixed(1) || '0.0'}</span>
                         </div>
                     </div>
                 </div>
@@ -95,13 +96,14 @@ const MovieCell: React.FC<MovieCellProps> = ({ columnIndex, rowIndex, style, dat
 };
 
 const Home: React.FC = () => {
+  const { token: { colorTextSecondary, colorWarning } } = theme.useToken();
   const { message, modal } = App.useApp();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const actorNameParam = searchParams.get('actorName');
   const genreParam = searchParams.get('genre');
   
-  const { searchQuery } = useApp();
+  const { searchQuery, setSearchQuery } = useApp();
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
@@ -110,6 +112,9 @@ const Home: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [genreFilter, setGenreFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [yearFilter, setYearFilter] = useState('all');
+  const [minRating, setMinRating] = useState(0);
+  const [isFilterPanelVisible, setIsFilterPanelVisible] = useState(false);
 
   useEffect(() => {
       if (genreParam) {
@@ -147,6 +152,17 @@ const Home: React.FC = () => {
       return Array.from(genres).sort();
   }, [movies]);
 
+  const allYears = useMemo(() => {
+      const years = new Set<string>();
+      movies.forEach(m => {
+          if (m.release_date) {
+              const year = m.release_date.split('-')[0];
+              if (year) years.add(year);
+          }
+      });
+      return Array.from(years).sort((a, b) => b.localeCompare(a)); // Newest years first
+  }, [movies]);
+
   const filteredMovies = useMemo(() => {
     let result = [...movies];
     
@@ -167,6 +183,16 @@ const Home: React.FC = () => {
     // Filter by Genre
     if (genreFilter) {
         result = result.filter(m => m.genres?.includes(genreFilter));
+    }
+
+    // Filter by Year
+    if (yearFilter !== 'all') {
+        result = result.filter(m => m.release_date?.startsWith(yearFilter));
+    }
+
+    // Filter by Rating
+    if (minRating > 0) {
+        result = result.filter(m => (m.vote_average || 0) >= minRating);
     }
 
     // Filter by Actor
@@ -195,7 +221,7 @@ const Home: React.FC = () => {
     }
 
     return result;
-  }, [movies, searchQuery, sortOrder, categoryFilter, genreFilter, actorNameParam, statusFilter]);
+  }, [movies, searchQuery, sortOrder, categoryFilter, genreFilter, actorNameParam, statusFilter, yearFilter, minRating]);
 
   const handleAddMovie = async (item: any) => {
     try {
@@ -220,6 +246,7 @@ const Home: React.FC = () => {
             vote_average: item.vote_average,
             category: item.media_type || 'movie',
             season_number: item.season_number,
+            runtime: item.runtime,
             add_time: new Date().toISOString().split('T')[0],
             id: 0,
             local_video_path: item.local_video_path // Handle local path from folder scan
@@ -314,12 +341,27 @@ const Home: React.FC = () => {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Space>
+        <Space size="middle">
+            <Input 
+                prefix={<SearchOutlined style={{ color: colorTextSecondary }} />} 
+                placeholder="搜索影视名称、简介..." 
+                style={{ width: 260, borderRadius: 8 }}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                allowClear
+            />
+            <Button 
+                icon={<FilterOutlined />} 
+                onClick={() => setIsFilterPanelVisible(!isFilterPanelVisible)}
+                type={isFilterPanelVisible || yearFilter !== 'all' || minRating > 0 || categoryFilter !== 'all' || statusFilter !== 'all' || genreFilter ? 'primary' : 'default'}
+            >
+                高级筛选 {isFilterPanelVisible ? <UpOutlined /> : <DownOutlined />}
+            </Button>
             {actorNameParam && (
                 <Tag 
                     closable 
                     onClose={clearActorFilter} 
-                    color="blue" 
+                    color="processing" 
                     style={{ fontSize: 14, padding: '4px 10px' }}
                 >
                     演员: {actorNameParam}
@@ -329,7 +371,7 @@ const Home: React.FC = () => {
                 <Tag 
                     closable 
                     onClose={() => handleGenreChange('all')} 
-                    color="green" 
+                    color="success" 
                     style={{ fontSize: 14, padding: '4px 10px' }}
                 >
                     类型: {genreFilter}
@@ -337,28 +379,6 @@ const Home: React.FC = () => {
             )}
         </Space>
         <Space>
-            <Select 
-                placeholder="按类型筛选" 
-                style={{ width: 120 }} 
-                allowClear 
-                onChange={handleGenreChange}
-                value={genreFilter || undefined}
-            >
-                <Option value="all">全部类型</Option>
-                {allGenres.map(g => (
-                    <Option key={g} value={g}>{g}</Option>
-                ))}
-            </Select>
-            <Select defaultValue="all" style={{ width: 100 }} onChange={setCategoryFilter}>
-                <Option value="all">全部类型</Option>
-                <Option value="movie">电影</Option>
-                <Option value="tv">剧集</Option>
-            </Select>
-            <Select defaultValue="all" style={{ width: 100 }} onChange={setStatusFilter}>
-                <Option value="all">全部状态</Option>
-                <Option value="made">已制作</Option>
-                <Option value="unmade">未制作</Option>
-            </Select>
             <Select defaultValue="latest" style={{ width: 120 }} onChange={setSortOrder}>
                 <Option value="latest">最新添加</Option>
                 <Option value="rating_desc">评分最高</Option>
@@ -368,6 +388,91 @@ const Home: React.FC = () => {
             </Button>
         </Space>
       </div>
+
+      {isFilterPanelVisible && (
+        <Card 
+            size="small" 
+            style={{ marginBottom: 16, borderRadius: 8, background: 'transparent' }}
+            styles={{ body: { padding: '12px 16px' } }}
+        >
+            <Space wrap size={[24, 12]}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: colorTextSecondary, fontSize: 13 }}>类型:</span>
+                    <Select 
+                        placeholder="全部类型" 
+                        style={{ width: 110 }} 
+                        allowClear 
+                        onChange={handleGenreChange}
+                        value={genreFilter || undefined}
+                    >
+                        <Option value="all">全部类型</Option>
+                        {allGenres.map(g => (
+                            <Option key={g} value={g}>{g}</Option>
+                        ))}
+                    </Select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: colorTextSecondary, fontSize: 13 }}>分类:</span>
+                    <Select value={categoryFilter} style={{ width: 90 }} onChange={setCategoryFilter}>
+                        <Option value="all">全部</Option>
+                        <Option value="movie">电影</Option>
+                        <Option value="tv">剧集</Option>
+                    </Select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: colorTextSecondary, fontSize: 13 }}>制作状态:</span>
+                    <Select value={statusFilter} style={{ width: 100 }} onChange={setStatusFilter}>
+                        <Option value="all">全部状态</Option>
+                        <Option value="made">全集完成</Option>
+                        <Option value="unmade">进行中</Option>
+                    </Select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: colorTextSecondary, fontSize: 13 }}>年份:</span>
+                    <Select 
+                        value={yearFilter} 
+                        style={{ width: 100 }} 
+                        onChange={setYearFilter}
+                        showSearch
+                    >
+                        <Option value="all">全部年份</Option>
+                        {allYears.map(year => (
+                            <Option key={year} value={year}>{year}年</Option>
+                        ))}
+                    </Select>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: colorTextSecondary, fontSize: 13 }}>最低评分:</span>
+                    <Rate 
+                        allowHalf 
+                        value={minRating / 2} 
+                        onChange={(val) => setMinRating(val * 2)} 
+                        style={{ fontSize: 16 }}
+                    />
+                    {minRating > 0 && <span style={{ color: colorWarning, fontWeight: 'bold', marginLeft: 4 }}>{minRating.toFixed(1)}</span>}
+                </div>
+
+                <Button 
+                    type="link" 
+                    size="small" 
+                    onClick={() => {
+                        setYearFilter('all');
+                        setMinRating(0);
+                        setCategoryFilter('all');
+                        setStatusFilter('all');
+                        handleGenreChange('all');
+                    }}
+                    style={{ padding: 0 }}
+                >
+                    重置筛选
+                </Button>
+            </Space>
+        </Card>
+      )}
       
       <div style={{ flex: 1, minHeight: 0 }}>
         <AutoSizer>

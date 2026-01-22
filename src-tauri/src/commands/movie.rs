@@ -1,8 +1,9 @@
 use tauri::State;
 use crate::db::Database;
-use crate::models::{Movie, Material};
+use crate::models::{Movie, Material, Person};
 use crate::commands::common::download_and_save_image;
 use crate::commands::files::scan_paths_internal;
+use crate::models::tmdb::get_movie_details as fetch_tmdb_details;
 
 #[tauri::command]
 pub fn get_movies(state: State<Database>) -> Result<Vec<Movie>, String> {
@@ -10,7 +11,17 @@ pub fn get_movies(state: State<Database>) -> Result<Vec<Movie>, String> {
 }
 
 #[tauri::command]
-pub async fn add_movie(state: State<'_, Database>, movie: Movie) -> Result<Movie, String> {
+pub async fn add_movie(state: State<'_, Database>, mut movie: Movie) -> Result<Movie, String> {
+    // 0. Auto-populate matched_folders from local_video_path if empty
+    if movie.matched_folders.is_empty() {
+        if let Some(path_str) = &movie.local_video_path {
+            let path = std::path::Path::new(path_str);
+            if let Some(parent) = path.parent() {
+                movie.matched_folders.push(parent.to_string_lossy().to_string());
+            }
+        }
+    }
+
     // 1. Add movie to database FIRST to get an ID and return immediately
     // This stores remote URLs initially, which frontend can display
     let added_movie = state.add_movie(movie).map_err(|e| e.to_string())?;
@@ -27,6 +38,47 @@ pub async fn add_movie(state: State<'_, Database>, movie: Movie) -> Result<Movie
         let db_root = db.get_root_dir();
         let mut updated = false;
 
+        // 4.1 Fetch full details from TMDB if not already present (e.g. from search result)
+        if let (Some(tmdb_id), Some(api_key)) = (movie_to_process.tmdb_id, &config.tmdb_api_key) {
+            let media_type = movie_to_process.category.as_deref().unwrap_or("movie");
+            if let Ok(details) = fetch_tmdb_details(api_key, tmdb_id, media_type, config.proxy.clone()).await {
+                // Update genres
+                if let Some(tmdb_genres) = details.genres {
+                    movie_to_process.genres = tmdb_genres.into_iter().map(|g| g.name).collect();
+                    updated = true;
+                }
+                // Update runtime
+                if details.runtime.is_some() {
+                    movie_to_process.runtime = details.runtime;
+                    updated = true;
+                }
+                // Update credits if not already set
+                if let Some(credits) = details.credits {
+                    if movie_to_process.actors.is_empty() {
+                        movie_to_process.actors = credits.cast.into_iter().take(10).map(|p| Person {
+                            id: p.id,
+                            name: p.name,
+                            original_name: p.original_name,
+                            profile_path: p.profile_path.map(|path| format!("https://image.tmdb.org/t/p/h632{}", path)),
+                        }).collect();
+                        updated = true;
+                    }
+                    if movie_to_process.directors.is_empty() {
+                        movie_to_process.directors = credits.crew.into_iter()
+                            .filter(|p| p.job.as_deref() == Some("Director"))
+                            .map(|p| Person {
+                                id: p.id,
+                                name: p.name,
+                                original_name: p.original_name,
+                                profile_path: p.profile_path.map(|path| format!("https://image.tmdb.org/t/p/h632{}", path)),
+                            }).collect();
+                        updated = true;
+                    }
+                }
+            }
+        }
+
+        // 4.2 Download and cache images
         // Poster
         if let Some(url) = &movie_to_process.poster_path {
              if let Some(local) = download_and_save_image(url, "posters", &config, &db_root).await {
@@ -56,24 +108,42 @@ pub async fn add_movie(state: State<'_, Database>, movie: Movie) -> Result<Movie
         }
 
         if updated {
-            // Update DB
-            let actors_json = serde_json::to_string(&movie_to_process.actors).unwrap_or_default();
-            let directors_json = serde_json::to_string(&movie_to_process.directors).unwrap_or_default();
-            
-            if let Err(e) = db.update_movie_images(
-                movie_to_process.id, 
-                movie_to_process.poster_path, 
-                actors_json, 
-                directors_json
-            ) {
-                eprintln!("Failed to update movie images in background: {}", e);
+            // Update DB with all gathered metadata and local paths
+            if let Err(e) = db.update_movie(movie_to_process.clone()) {
+                eprintln!("Failed to update movie metadata in background: {}", e);
             } else {
-                println!("Background image download completed for movie: {}", movie_to_process.title);
+                println!("Background metadata caching completed for movie: {}", movie_to_process.title);
             }
         }
     });
 
     Ok(added_movie)
+}
+
+#[tauri::command]
+pub fn update_episode_status(
+    state: State<Database>,
+    movie_id: u64,
+    episode_id: u64,
+    status: String,
+) -> Result<(), String> {
+    let mut movie = state.get_movie(movie_id).ok_or("Movie not found")?;
+    
+    let mut found = false;
+    for episode in &mut movie.episodes {
+        if episode.id == episode_id {
+            episode.production_status = Some(status.clone());
+            found = true;
+            break;
+        }
+    }
+    
+    if !found {
+        return Err("Episode not found".to_string());
+    }
+    
+    state.update_movie(movie).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -247,7 +317,17 @@ pub async fn refresh_movie_materials(state: State<'_, Database>, movie_id: u64) 
     // Sort by length descending to match most specific folder first
     folder_list.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
 
-    let paths = movie.matched_folders.clone();
+    let mut paths = movie.matched_folders.clone();
+    
+    // 自动兜底：如果 matched_folders 为空，尝试使用 local_video_path 的父目录
+    if paths.is_empty() {
+        if let Some(path_str) = &movie.local_video_path {
+            let path = std::path::Path::new(path_str);
+            if let Some(parent) = path.parent() {
+                paths.push(parent.to_string_lossy().to_string());
+            }
+        }
+    }
     
     if paths.is_empty() {
         return Ok(Vec::new());
@@ -260,9 +340,21 @@ pub async fn refresh_movie_materials(state: State<'_, Database>, movie_id: u64) 
     if let Some(aliases) = &movie.aliases {
         titles.extend(aliases.clone());
     }
+    
+    // 额外优化：将关联文件夹的名称也加入匹配标题中
+    // 这样如果文件夹叫“xx 第4季”，里面的文件即使叫“S04E01”也能因为文件夹匹配而被拉入
+    for path_str in &paths {
+        if let Some(folder_name) = std::path::Path::new(path_str).file_name().map(|n| n.to_string_lossy().to_string()) {
+            if !titles.contains(&folder_name) {
+                titles.push(folder_name);
+            }
+        }
+    }
+
     let titles: Vec<String> = titles.into_iter().filter(|t| !t.trim().is_empty()).collect();
     
-    let threshold = 0.8;
+    // 刷新素材时，使用较低的阈值 (0.5)，以便捕获命名不太规范的相关文件
+    let threshold = 0.5;
     
     let matched_files = tauri::async_runtime::spawn_blocking(move || {
         scan_paths_internal(paths, Some(titles), threshold)
@@ -293,7 +385,8 @@ pub async fn refresh_movie_materials(state: State<'_, Database>, movie_id: u64) 
              }
         }
 
-        if let Some(existing_mat) = movie.materials.iter_mut().find(|m| m.path == file.path) {
+        let file_path_norm = file.path.replace("/", "\\").to_lowercase();
+        if let Some(existing_mat) = movie.materials.iter_mut().find(|m| m.path.replace("/", "\\").to_lowercase() == file_path_norm) {
             // Update existing material if category changed
             if existing_mat.category != category {
                 existing_mat.category = category.clone();

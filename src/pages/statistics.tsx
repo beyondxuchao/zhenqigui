@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Card, Row, Col, Statistic, Table, Progress, Typography, Spin, App } from 'antd';
+import { Card, Row, Col, Statistic, Table, Progress, Typography, Spin, App, theme } from 'antd';
 import { 
   VideoCameraOutlined, 
   FileOutlined, 
@@ -19,6 +19,7 @@ interface MovieData extends Movie {
 }
 
 const Statistics: React.FC = () => {
+  const { token: { colorSuccess, colorWarning, colorTextDisabled, colorTextDescription } } = theme.useToken();
   const { message } = App.useApp();
   const [movies, setMovies] = useState<MovieData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,11 +149,11 @@ const Statistics: React.FC = () => {
         <Col xs={24} sm={12} md={6}>
             <Card variant="borderless">
             <Statistic 
-                title={<span style={{ color: 'rgba(0, 0, 0, 0.45)' }}>已制作</span>}
+                title={<span style={{ color: colorTextDescription }}>已制作</span>}
                 value={stats.madeCount} 
                 suffix={`/ ${stats.totalMovies}`}
                 prefix={<CheckCircleOutlined />} 
-                styles={{ content: { color: '#52c41a' } }}
+                styles={{ content: { color: colorSuccess } }}
             />
             </Card>
         </Col>
@@ -167,14 +168,14 @@ const Statistics: React.FC = () => {
                         <Text>已制作 ({stats.madeCount})</Text>
                         <Text>{Math.round(stats.madeCount / stats.totalMovies * 100) || 0}%</Text>
                     </div>
-                    <Progress percent={Math.round(stats.madeCount / stats.totalMovies * 100)} strokeColor="#52c41a" showInfo={false} />
+                    <Progress percent={Math.round(stats.madeCount / stats.totalMovies * 100)} strokeColor={colorSuccess} showInfo={false} />
                 </div>
                 <div style={{ marginBottom: 16 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                         <Text>未制作 ({stats.unmadeCount})</Text>
                         <Text>{Math.round(stats.unmadeCount / stats.totalMovies * 100) || 0}%</Text>
                     </div>
-                    <Progress percent={Math.round(stats.unmadeCount / stats.totalMovies * 100)} strokeColor="#faad14" showInfo={false} />
+                    <Progress percent={Math.round(stats.unmadeCount / stats.totalMovies * 100)} strokeColor={colorWarning} showInfo={false} />
                 </div>
                  {stats.pendingCount > 0 && (
                     <div style={{ marginBottom: 16 }}>
@@ -182,7 +183,7 @@ const Statistics: React.FC = () => {
                             <Text>待定 ({stats.pendingCount})</Text>
                             <Text>{Math.round(stats.pendingCount / stats.totalMovies * 100) || 0}%</Text>
                         </div>
-                        <Progress percent={Math.round(stats.pendingCount / stats.totalMovies * 100)} strokeColor="#d9d9d9" showInfo={false} />
+                        <Progress percent={Math.round(stats.pendingCount / stats.totalMovies * 100)} strokeColor={colorTextDisabled} showInfo={false} />
                     </div>
                 )}
             </Card>

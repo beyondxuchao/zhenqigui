@@ -15,11 +15,25 @@ export interface Movie {
     category?: string; // 'movie' | 'tv'
     season_number?: number;
     production_status?: string; // 'made' | 'unmade' | 'pending'
+    runtime?: number;
     matched_folders?: string[]; // Folders manually added/scanned for this movie
     genres?: string[];
     actors?: Person[];
     directors?: Person[];
     materials?: Material[];
+    episodes?: Episode[];
+}
+
+export interface Episode {
+    id: number;
+    episode_number: number;
+    name: string;
+    overview?: string;
+    air_date?: string;
+    runtime?: number;
+  still_path?: string;
+    vote_average?: number;
+    production_status?: string; // 'made' | 'unmade' | 'pending'
 }
 
 export interface Person {
@@ -82,6 +96,7 @@ export interface AppConfig {
     local_player_path?: string;
     ffmpeg_path?: string;
     ai_model_path?: string;
+    sidebar_width?: number;
 }
 
 export interface AppInfo {

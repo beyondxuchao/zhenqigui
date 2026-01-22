@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Button, App, Flex, Progress, Typography, Space, Alert, Form, Select, Row, Col, Input, Steps } from 'antd';
+import { Card, Button, App, Flex, Progress, Typography, Space, Alert, Form, Select, Row, Col, Input, Steps, theme } from 'antd';
 import { FileOutlined, ThunderboltOutlined, FolderOpenOutlined, TranslationOutlined, AudioOutlined } from '@ant-design/icons';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -16,6 +16,7 @@ interface WhisperEnv {
 }
 
 const WhisperTool: React.FC = () => {
+  const { token } = theme.useToken();
   const { message } = App.useApp();
   
   // State
@@ -211,7 +212,7 @@ const WhisperTool: React.FC = () => {
          )}
 
          {/* File Selection */}
-         <Card title="1. 选择文件" size="small" variant="borderless" styles={{ body: { background: 'var(--ant-color-bg-layout)', borderRadius: 8 } }}>
+         <Card title="1. 选择文件" size="small" variant="borderless" styles={{ body: { background: token.colorBgLayout, borderRadius: 8 } }}>
             <Flex vertical style={{ width: '100%' }}>
                 <Space.Compact style={{ width: '100%' }}>
                     <Input value={file?.path} placeholder="请选择视频或音频文件..." readOnly prefix={<FileOutlined />} />
@@ -221,7 +222,7 @@ const WhisperTool: React.FC = () => {
          </Card>
 
          {/* Configuration */}
-         <Card title="2. 参数设置" size="small" variant="borderless" styles={{ body: { background: 'var(--ant-color-bg-layout)', borderRadius: 8 } }}>
+         <Card title="2. 参数设置" size="small" variant="borderless" styles={{ body: { background: token.colorBgLayout, borderRadius: 8 } }}>
              <Form layout="vertical">
                 <Row gutter={16}>
                     <Col span={12}>
@@ -313,8 +314,8 @@ const WhisperTool: React.FC = () => {
           </div>
           
           <div style={{ 
-              background: '#1e1e1e', 
-              color: '#d4d4d4', 
+              background: token.colorBgContainer, 
+              color: token.colorText, 
               padding: 16, 
               borderRadius: 8, 
               textAlign: 'left', 
@@ -322,10 +323,10 @@ const WhisperTool: React.FC = () => {
               fontSize: 12,
               height: 300,
               overflowY: 'auto',
-              border: '1px solid #333'
+              border: `1px solid ${token.colorBorder}`
           }}>
               {logs.map((log, i) => <div key={i}>{log}</div>)}
-              {logs.length === 0 && <div style={{ color: '#666' }}>等待任务开始...</div>}
+              {logs.length === 0 && <div style={{ color: token.colorTextDescription }}>等待任务开始...</div>}
           </div>
           
           {!isProcessing && (

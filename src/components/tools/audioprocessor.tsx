@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Form, Input, InputNumber, Slider, App, Space, Card, Row, Col, Modal, Popconfirm, Divider } from 'antd';
+import { Button, Form, Input, InputNumber, Slider, App, Space, Card, Row, Col, Modal, Popconfirm, Divider, theme } from 'antd';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { listen } from '@tauri-apps/api/event';
 import { SaveOutlined, DeleteOutlined, ThunderboltOutlined, FolderOpenOutlined } from '@ant-design/icons';
@@ -10,6 +10,7 @@ interface AudioProcessorProps {
 }
 
 const AudioProcessor: React.FC<AudioProcessorProps> = ({ initialFile }) => {
+    const { token } = theme.useToken();
     const { message } = App.useApp();
     const [inputFile, setInputFile] = useState<string>(initialFile || '');
     const [presets, setPresets] = useState<AudioPreset[]>([]);
@@ -311,14 +312,14 @@ const AudioProcessor: React.FC<AudioProcessorProps> = ({ initialFile }) => {
                         extra={<Button type="link" size="small" onClick={loadPresets}>刷新</Button>}
                     >
                         {presets.length === 0 ? (
-                            <div style={{ textAlign: 'center', color: '#999', padding: 20 }}>暂无预设</div>
+                            <div style={{ textAlign: 'center', color: token.colorTextDisabled, padding: 20 }}>暂无预设</div>
                         ) : (
                             <div style={{ maxHeight: 400, overflowY: 'auto' }}>
                                 {presets.map(preset => (
                                     <Card 
                                         key={preset.id} 
                                         size="small" 
-                                        style={{ marginBottom: 10, borderColor: selectedPresetId === preset.id ? '#1677ff' : undefined }}
+                                        style={{ marginBottom: 10, borderColor: selectedPresetId === preset.id ? token.colorPrimary : undefined }}
                                         hoverable
                                         onClick={() => handleApplyPreset(preset.id)}
                                     >
@@ -328,7 +329,7 @@ const AudioProcessor: React.FC<AudioProcessorProps> = ({ initialFile }) => {
                                                 <Button type="text" danger icon={<DeleteOutlined />} onClick={(e) => e.stopPropagation()} />
                                             </Popconfirm>
                                         </div>
-                                        <div style={{ fontSize: 12, color: '#666', marginTop: 5 }}>
+                                        <div style={{ fontSize: 12, color: token.colorTextDescription, marginTop: 5 }}>
                                             Boost: {preset.input_boost}dB | Max: {preset.max_amplitude}dB
                                             <br />
                                             Lookahead: {preset.lookahead}ms | Release: {preset.release_time}ms

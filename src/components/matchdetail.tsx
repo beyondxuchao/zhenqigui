@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Card, Button, InputNumber, Slider, Table, Tag, Space, Empty, Breadcrumb, Row, Col, Tooltip, Modal, Input, App, theme } from 'antd';
-import { ReloadOutlined, LinkOutlined, FolderAddOutlined, PlayCircleOutlined, DragOutlined, FolderOpenOutlined, EditOutlined } from '@ant-design/icons';
+import { ReloadOutlined, LinkOutlined, FolderAddOutlined, PlayCircleOutlined, DragOutlined, FolderOpenOutlined, EditOutlined, DisconnectOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getMovieDetails, scanDirectories, addMaterialToMovie, getConfig, openFileWithPlayer, updateMovie, openDirectory, renameFileDirect } from '../services/api';
+import { getMovieDetails, scanDirectories, addMaterialToMovie, getConfig, openFileWithPlayer, updateMovie, openDirectory, renameFileDirect, removeMaterialFromMovie } from '../services/api';
 import { Movie, MatchedFile, Material } from '../types';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { invoke } from '@tauri-apps/api/core';
@@ -198,6 +198,74 @@ const MatchDetail: React.FC<MatchDetailProps> = ({ movieId, onBack }) => {
       }
   };
 
+  const handleUnlink = async (file: MatchedFile) => {
+      if (!movie) return;
+      const material = movie.materials?.find(m => m.path === file.path);
+      if (!material) return;
+      
+      try {
+          await removeMaterialFromMovie(movie.id, material.id);
+          message.success('已解除关联: ' + file.name);
+          fetchMovie();
+      } catch (e) {
+          message.error('解除关联失败');
+      }
+  };
+
+  const handleBatchAction = async () => {
+      if (!movie || selectedRowKeys.length === 0) return;
+      
+      const selectedFiles = results.filter(r => selectedRowKeys.includes(r.path));
+      const toAssociate = selectedFiles.filter(r => !movie.materials?.some(m => m.path === r.path));
+      const toUnlink = selectedFiles.filter(r => movie.materials?.some(m => m.path === r.path));
+
+      setMatching(true);
+      let associateCount = 0;
+      let unlinkCount = 0;
+      
+      try {
+          // Process associations
+          for (const file of toAssociate) {
+              const material: Material = {
+                  id: file.key || (Date.now() + Math.random()).toString(),
+                  name: file.name,
+                  path: file.path,
+                  size: file.size,
+                  file_type: file.file_type,
+                  category: file.category,
+                  add_time: new Date().toISOString(),
+                  modified_time: file.modified_time
+              };
+              await addMaterialToMovie(movie.id, material);
+              associateCount++;
+          }
+
+          // Process unlinks
+          for (const file of toUnlink) {
+              const material = movie.materials?.find(m => m.path === file.path);
+              if (material) {
+                  await removeMaterialFromMovie(movie.id, material.id);
+                  unlinkCount++;
+              }
+          }
+
+          if (associateCount > 0 && unlinkCount > 0) {
+              message.success(`成功关联 ${associateCount} 个，解除 ${unlinkCount} 个文件`);
+          } else if (associateCount > 0) {
+              message.success(`成功关联 ${associateCount} 个文件`);
+          } else if (unlinkCount > 0) {
+              message.success(`成功解除关联 ${unlinkCount} 个文件`);
+          }
+          
+          setSelectedRowKeys([]);
+          fetchMovie();
+      } catch (e) {
+          message.error(`批量操作部分失败`);
+      } finally {
+          setMatching(false);
+      }
+  };
+
   const handleRenameClick = (file: MatchedFile) => {
       setRenamingFile(file);
       
@@ -310,7 +378,7 @@ const MatchDetail: React.FC<MatchDetailProps> = ({ movieId, onBack }) => {
         dataIndex: 'similarity', 
         key: 'similarity', 
         width: 100,
-        render: (val: number) => <Tag color={val > 90 ? 'green' : 'orange'}>{val}%</Tag>,
+        render: (val: number) => <Tag color={val > 90 ? 'success' : 'warning'}>{val}%</Tag>,
         sorter: (a: MatchedFile, b: MatchedFile) => a.similarity - b.similarity
     },
     {
@@ -322,13 +390,13 @@ const MatchDetail: React.FC<MatchDetailProps> = ({ movieId, onBack }) => {
             return (
             <div style={{ whiteSpace: 'nowrap' }}>
             <Space size={4}>
-                <Tooltip title={isAssociated ? '已关联' : '关联'}>
+                <Tooltip title={isAssociated ? '解除关联' : '关联'}>
                     <Button 
                         type="link" 
                         size="small" 
-                        icon={<LinkOutlined />} 
-                        disabled={isAssociated}
-                        onClick={() => handleAssociate(record)}
+                        icon={isAssociated ? <DisconnectOutlined /> : <LinkOutlined />} 
+                        danger={isAssociated}
+                        onClick={() => isAssociated ? handleUnlink(record) : handleAssociate(record)}
                     />
                 </Tooltip>
                 <Tooltip title="重命名">
@@ -441,7 +509,29 @@ const MatchDetail: React.FC<MatchDetailProps> = ({ movieId, onBack }) => {
                 </div>
             </Card>
 
-            <Card title="匹配结果" style={{ marginTop: 16 }}>
+            <Card 
+                title="匹配结果" 
+                style={{ marginTop: 16 }}
+                extra={
+                    <Button 
+                        type="primary" 
+                        icon={<LinkOutlined />} 
+                        disabled={selectedRowKeys.length === 0}
+                        onClick={handleBatchAction}
+                        loading={matching}
+                    >
+                        {(() => {
+                            const selectedFiles = results.filter(r => selectedRowKeys.includes(r.path));
+                            const toAssociate = selectedFiles.filter(r => !movie.materials?.some(m => m.path === r.path)).length;
+                            const toUnlink = selectedFiles.filter(r => movie.materials?.some(m => m.path === r.path)).length;
+                            
+                            if (toAssociate > 0 && toUnlink > 0) return `批量处理 (${selectedRowKeys.length})`;
+                            if (toUnlink > 0) return `批量解除 (${toUnlink})`;
+                            return `批量关联 (${toAssociate})`;
+                        })()}
+                    </Button>
+                }
+            >
                 <Table 
                     columns={columns} 
                     dataSource={results} 
@@ -486,7 +576,7 @@ const MatchDetail: React.FC<MatchDetailProps> = ({ movieId, onBack }) => {
                         />
                         <Button type="default" disabled style={{ color: token.colorText, cursor: 'default', backgroundColor: token.colorFillAlter }}>{fileExtension}</Button>
                     </Space.Compact>
-                    <div style={{ marginTop: 8, color: '#999', fontSize: '12px' }}>
+                    <div style={{ marginTop: 8, color: token.colorTextSecondary, fontSize: '12px' }}>
                         原文件名: {renamingFile?.name}
                     </div>
                 </Modal>

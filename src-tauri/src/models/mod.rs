@@ -18,6 +18,7 @@ pub struct Movie {
     pub category: Option<String>, // "movie" or "tv"
     pub season_number: Option<u32>,
     pub production_status: Option<String>, // "made", "unmade", "pending"
+    pub runtime: Option<u64>,
     #[serde(default)]
     pub matched_folders: Vec<String>, // Folders manually added/scanned for this movie
     #[serde(default)]
@@ -28,6 +29,21 @@ pub struct Movie {
     pub directors: Vec<Person>,
     #[serde(default)]
     pub materials: Vec<Material>,
+    #[serde(default)]
+    pub episodes: Vec<Episode>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct Episode {
+    pub id: u64,
+    pub episode_number: u32,
+    pub name: String,
+    pub overview: Option<String>,
+    pub air_date: Option<String>,
+    pub runtime: Option<u32>,
+    pub still_path: Option<String>,
+    pub vote_average: Option<f64>,
+    pub production_status: Option<String>, // "made", "unmade", "pending"
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -78,6 +94,8 @@ pub struct AppConfig {
     pub local_player_path: Option<String>,
     pub ffmpeg_path: Option<String>,
     pub ai_model_path: Option<String>,
+    #[serde(default)]
+    pub sidebar_width: Option<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -111,6 +129,7 @@ impl Default for AppConfig {
             local_player_path: None,
             ffmpeg_path: None,
             ai_model_path: None,
+            sidebar_width: Some(200),
         }
     }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, Spin, Tooltip, Tag, Segmented, Timeline, App } from 'antd';
+import { Calendar, Spin, Tooltip, Tag, Segmented, Timeline, App, theme } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
 import { Solar } from 'lunar-javascript';
@@ -11,6 +11,8 @@ import { useNavigate } from 'react-router-dom';
 import { CalendarOutlined, BarsOutlined } from '@ant-design/icons';
 
 const CalendarPage: React.FC = () => {
+  const { token } = theme.useToken();
+  const { colorTextSecondary, colorWarning, colorError, colorInfo, colorBgMask, boxShadowSecondary } = token;
   const { message } = App.useApp();
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(false);
@@ -63,7 +65,7 @@ const CalendarPage: React.FC = () => {
               <div style={{ paddingBottom: 24 }}>
                   <div style={{ marginBottom: 12 }}>
                     <span style={{ fontSize: 18, fontWeight: 'bold', marginRight: 8 }}>{date}</span>
-                    <span style={{ fontSize: 14, color: '#888' }}>{dayjs(date).format('dddd')}</span>
+                    <span style={{ fontSize: 14, color: colorTextSecondary }}>{dayjs(date).format('dddd')}</span>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
                       {grouped[date].map(movie => (
@@ -77,7 +79,7 @@ const CalendarPage: React.FC = () => {
                                 aspectRatio: '2/3', 
                                 borderRadius: 8, 
                                 overflow: 'hidden', 
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                boxShadow: boxShadowSecondary,
                                 marginBottom: 8,
                                 position: 'relative'
                               }}>
@@ -91,8 +93,8 @@ const CalendarPage: React.FC = () => {
                                         position: 'absolute', 
                                         top: 4, 
                                         right: 4, 
-                                        backgroundColor: 'rgba(0,0,0,0.7)', 
-                                        color: '#fadb14', 
+                                        backgroundColor: colorBgMask, 
+                                        color: colorWarning, 
                                         fontSize: 10, 
                                         padding: '1px 4px', 
                                         borderRadius: 4 
@@ -123,7 +125,7 @@ const CalendarPage: React.FC = () => {
     const lunar = solar.getLunar();
     
     let text = '';
-    let color = '#999';
+    let color = colorTextSecondary;
     let isFestival = false;
 
     const festivals = lunar.getFestivals();
@@ -133,20 +135,20 @@ const CalendarPage: React.FC = () => {
     // Priority: Lunar Festival > Solar Festival > JieQi > Lunar Day
     if (festivals.length > 0) {
         text = festivals[0];
-        color = '#ff4d4f'; // Red for festivals
+        color = colorError; // Red for festivals
         isFestival = true;
     } else if (solarFestivals.length > 0) {
         text = solarFestivals[0];
-        color = '#ff4d4f';
+        color = colorError;
         isFestival = true;
     } else if (jieQi) {
         text = jieQi;
-        color = '#faad14'; // Orange for JieQi
+        color = colorWarning; // Orange for JieQi
     } else {
         text = lunar.getDayInChinese();
         if (text === '初一') {
             text = lunar.getMonthInChinese() + '月';
-            color = '#1890ff'; // Blue for first day of month
+            color = colorInfo; // Blue for first day of month
         }
     }
 
@@ -260,7 +262,7 @@ const CalendarPage: React.FC = () => {
                 <Timeline
                     items={timelineItems}
                 />
-                {timelineItems.length === 0 && <div style={{ textAlign: 'center', color: '#999' }}>暂无观影记录</div>}
+                {timelineItems.length === 0 && <div style={{ textAlign: 'center', color: colorTextSecondary }}>暂无观影记录</div>}
             </div>
         )}
       </Spin>

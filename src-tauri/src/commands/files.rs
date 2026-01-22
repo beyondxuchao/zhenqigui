@@ -140,7 +140,7 @@ pub fn scan_paths_internal(paths: Vec<String>, titles: Option<Vec<String>>, thre
     let video_extensions = ["mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "ts"];
     let audio_extensions = ["mp3", "flac", "wav", "m4a"];
     let image_extensions = ["jpg", "jpeg", "png", "webp", "bmp", "gif", "tif", "tiff", "svg"];
-    let doc_extensions = ["pdf", "doc", "docx", "txt", "nfo", "md", "epub", "mobi", "azw3"];
+    let doc_extensions = ["pdf", "doc", "docx", "txt", "nfo", "md", "epub", "mobi", "azw3", "srt", "ass", "ssa", "vtt"];
     let mut local_results = Vec::new();
 
     for path_str in &paths {
@@ -197,21 +197,26 @@ pub fn scan_paths_internal(paths: Vec<String>, titles: Option<Vec<String>>, thre
                                 };
 
                                 if sim < 1.0 {
-                                    if let Ok(rel_path) = path.strip_prefix(Path::new(path_str)) {
-                                        if let Some(parent) = rel_path.parent() {
-                                            for comp in parent.components() {
-                                                let dir_name = comp.as_os_str().to_string_lossy().to_string();
-                                                let dir_name_lower = dir_name.to_lowercase();
-                                                let dir_sim = if dir_name_lower == title_lower {
-                                                    1.0
-                                                } else if dir_name_lower.contains(&title_lower) || title_lower.contains(&dir_name_lower) {
-                                                    0.95
-                                                } else {
-                                                    strsim::jaro_winkler(&dir_name_lower, &title_lower)
-                                                };
-                                                if dir_sim > sim { sim = dir_sim; }
-                                            }
+                                    // 检查所有父目录名称（包括扫描根目录本身）
+                                    let mut current_p = path.parent();
+                                    while let Some(p) = current_p {
+                                        if let Some(dir_name) = p.file_name().map(|n| n.to_string_lossy()) {
+                                            let dir_name_lower = dir_name.to_lowercase();
+                                            let dir_sim = if dir_name_lower == title_lower {
+                                                1.0
+                                            } else if dir_name_lower.contains(&title_lower) || title_lower.contains(&dir_name_lower) {
+                                                0.95
+                                            } else {
+                                                strsim::jaro_winkler(&dir_name_lower, &title_lower)
+                                            };
+                                            if dir_sim > sim { sim = dir_sim; }
                                         }
+                                        
+                                        // 如果已经到达或超出扫描根目录，停止向上追溯
+                                        if p == Path::new(path_str) {
+                                            break;
+                                        }
+                                        current_p = p.parent();
                                     }
                                 }
                                 if sim > similarity { similarity = sim; }

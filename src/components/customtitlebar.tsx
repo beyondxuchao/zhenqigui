@@ -61,10 +61,9 @@ const CustomTitleBar: React.FC<CustomTitleBarProps> = ({ isDark, toggleTheme }) 
             data-tauri-drag-region 
             style={{
             height: 32,
-            background: token.colorBgContainer,
+            background: 'transparent',
             display: 'flex',
             alignItems: 'center',
-            borderBottom: `1px solid ${token.colorSplit}`,
             userSelect: 'none',
             zIndex: 1000,
             width: '100%',
@@ -73,6 +72,17 @@ const CustomTitleBar: React.FC<CustomTitleBarProps> = ({ isDark, toggleTheme }) 
             left: 0,
             right: 0
         }}>
+            <style>
+                {`
+                    .titlebar-button:hover {
+                        background: ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
+                    }
+                    .titlebar-button-close:hover {
+                        background: #e81123 !important;
+                        color: white !important;
+                    }
+                `}
+            </style>
             {/* Drag Region - Occupies all remaining space */}
             <div data-tauri-drag-region style={{ flex: 1, height: '100%' }} />
             
@@ -101,8 +111,8 @@ const CustomTitleBar: React.FC<CustomTitleBarProps> = ({ isDark, toggleTheme }) 
                 </div>
                 <div 
                     onClick={() => appWindow.close()} 
-                    style={{ ...buttonStyle, ':hover': { background: '#ff4d4f', color: 'white' } } as any}
-                    className="titlebar-button-close"
+                    style={buttonStyle}
+                    className="titlebar-button titlebar-button-close"
                 >
                     <CloseOutlined style={{ fontSize: 14 }} />
                 </div>

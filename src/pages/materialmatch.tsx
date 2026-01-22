@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Button, Table, Tag, Space, Badge, Input, Empty, App } from 'antd';
+import { Typography, Button, Table, Tag, Space, Badge, Input, Empty, App, theme } from 'antd';
 import { SearchOutlined, LinkOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getMovies } from '../services/api';
@@ -10,6 +10,7 @@ import { formatFileSize } from '../utils/format';
 const { Text } = Typography;
 
 const MaterialMatch: React.FC = () => {
+  const { token: { colorTextSecondary } } = theme.useToken();
   const { message } = App.useApp();
   const { id } = useParams();
   const navigate = useNavigate();
@@ -49,7 +50,7 @@ const MaterialMatch: React.FC = () => {
       render: (text: string, record: Movie) => (
         <div>
           <div style={{ fontWeight: 'bold' }}>{text}</div>
-          <div style={{ fontSize: 12, color: '#999' }}>{record.original_title}</div>
+          <div style={{ fontSize: 12, color: colorTextSecondary }}>{record.original_title}</div>
         </div>
       ),
     },

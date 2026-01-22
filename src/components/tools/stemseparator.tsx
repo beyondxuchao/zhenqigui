@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, Button, App, Flex, Progress, Typography, Space, Alert, Collapse, Form, Select, Slider, Row, Col, Input, Steps, Badge, Checkbox, Divider, Tooltip } from 'antd';
+import { Card, Button, App, Flex, Progress, Typography, Space, Alert, Collapse, Form, Select, Slider, Row, Col, Input, Steps, Badge, Checkbox, Divider, Tooltip, theme } from 'antd';
 import { InboxOutlined, SoundOutlined, DownloadOutlined, FileOutlined, SettingOutlined, FolderOpenOutlined, PlayCircleOutlined, PauseCircleOutlined, ArrowLeftOutlined, ThunderboltOutlined, WarningOutlined, AudioOutlined } from '@ant-design/icons';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -23,6 +23,7 @@ interface AudioTrack {
 }
 
 const StemSeparator: React.FC = () => {
+  const { token } = theme.useToken();
   const { message } = App.useApp();
   
   // State
@@ -415,15 +416,15 @@ const StemSeparator: React.FC = () => {
               }}
               style={{ 
                   padding: '40px 20px', 
-                  background: isDragOver ? 'rgba(22, 119, 255, 0.05)' : 'var(--ant-color-bg-container)', 
-                  border: `2px dashed ${isDragOver ? '#1677ff' : '#d9d9d9'}`, 
+                  background: isDragOver ? token.colorPrimaryBg : token.colorBgContainer, 
+                  border: `2px dashed ${isDragOver ? token.colorPrimary : token.colorBorder}`, 
                   borderRadius: 12,
                   textAlign: 'center',
                   cursor: 'pointer',
                   transition: 'all 0.3s'
               }}
           >
-              <p style={{ fontSize: 48, color: isDragOver ? '#1677ff' : '#bfbfbf', marginBottom: 16 }}>
+              <p style={{ fontSize: 48, color: isDragOver ? token.colorPrimary : token.colorTextDisabled, marginBottom: 16 }}>
                   {file ? <FileOutlined /> : <InboxOutlined />}
               </p>
               {file ? (
@@ -440,13 +441,13 @@ const StemSeparator: React.FC = () => {
           </div>
 
           {/* Configuration */}
-          <Card size="small" title="参数设置" variant="borderless" style={{ background: 'var(--ant-color-bg-layout)' }}>
+          <Card size="small" title="参数设置" variant="borderless" style={{ background: token.colorBgLayout }}>
              <Form layout="vertical">
                 <Row gutter={16}>
                     <Col span={24}>
                         <Form.Item label="输出目录">
                              <Space.Compact style={{ width: '100%' }}>
-                                <Input value={outputDir} readOnly prefix={<FolderOpenOutlined style={{ color: '#bfbfbf' }}/>} />
+                                <Input value={outputDir} readOnly prefix={<FolderOpenOutlined style={{ color: token.colorTextDisabled }}/>} />
                                 <Button onClick={handleSelectOutputDir}>更改</Button>
                             </Space.Compact>
                         </Form.Item>
@@ -503,7 +504,7 @@ const StemSeparator: React.FC = () => {
             type="circle" 
             percent={progress} 
             size={160} 
-            strokeColor={processStatus === 'error' ? '#ff4d4f' : { '0%': '#108ee9', '100%': '#87d068' }}
+            strokeColor={processStatus === 'error' ? token.colorError : { '0%': token.colorInfo, '100%': token.colorSuccess }}
             status={processStatus === 'error' ? 'exception' : (processStatus === 'success' ? 'success' : 'active')} 
           />
           <div style={{ marginTop: 24, marginBottom: 24 }}>
@@ -518,8 +519,8 @@ const StemSeparator: React.FC = () => {
           </div>
           
           <div style={{ 
-              background: '#1e1e1e', 
-              color: '#d4d4d4', 
+              background: token.colorBgContainer, 
+              color: token.colorText, 
               padding: 16, 
               borderRadius: 8, 
               textAlign: 'left', 
@@ -527,10 +528,10 @@ const StemSeparator: React.FC = () => {
               fontSize: 12,
               height: 200,
               overflowY: 'auto',
-              border: '1px solid #333'
+              border: `1px solid ${token.colorBorder}`
           }}>
               {logs.map((log, i) => <div key={i}>{log}</div>)}
-              {logs.length === 0 && <div style={{ color: '#666' }}>等待任务开始...</div>}
+              {logs.length === 0 && <div style={{ color: token.colorTextDescription }}>等待任务开始...</div>}
           </div>
 
           {processStatus === 'error' && (
@@ -544,7 +545,7 @@ const StemSeparator: React.FC = () => {
   const renderEditorStep = () => (
       <div>
           {/* Toolbar */}
-          <Card variant="borderless" styles={{ body: { padding: '16px 24px', background: 'var(--ant-color-bg-layout)', borderRadius: 8 } }}>
+          <Card variant="borderless" styles={{ body: { padding: '16px 24px', background: token.colorBgLayout, borderRadius: 8 } }}>
               <Row align="middle" justify="space-between">
                   <Col>
                       <Space size="large">
@@ -586,7 +587,7 @@ const StemSeparator: React.FC = () => {
                                         checked={track.selected} 
                                         onChange={(e: any) => handleTrackChange(index, { selected: e.target.checked })}
                                     />
-                                    <Badge color={track.muted ? 'grey' : 'green'} status="processing" />
+                                    <Badge color={track.muted ? token.colorTextSecondary : token.colorSuccess} status="processing" />
                                     <Text strong style={{ textTransform: 'capitalize', fontSize: 16 }}>{track.name}</Text>
                                   </Space>
                               </Col>
@@ -600,7 +601,7 @@ const StemSeparator: React.FC = () => {
                                             min={0} max={100}
                                             disabled={track.muted || (tracks.some(t => t.solo) && !track.solo)}
                                             onChange={v => handleTrackChange(index, { volume: v })}
-                                            trackStyle={{ background: '#1890ff' }}
+                                            trackStyle={{ background: token.colorPrimary }}
                                           />
                                       </Col>
                                       <Col span={6}>
@@ -617,7 +618,7 @@ const StemSeparator: React.FC = () => {
                                             type={track.solo ? 'primary' : 'default'} 
                                             danger={track.solo}
                                             shape="circle"
-                                            icon={<Text strong style={{ color: track.solo ? '#fff' : 'inherit' }}>S</Text>}
+                                            icon={<Text strong style={{ color: track.solo ? token.colorTextLightSolid : 'inherit' }}>S</Text>}
                                             onClick={() => handleTrackChange(index, { solo: !track.solo })}
                                           />
                                       </Tooltip>
@@ -625,7 +626,11 @@ const StemSeparator: React.FC = () => {
                                           <Button 
                                             type={track.muted ? 'primary' : 'default'} 
                                             ghost={track.muted} // Filled when active? Antd type logic is weird, let's just use type default/primary
-                                            style={{ borderColor: track.muted ? '#ff4d4f' : undefined, color: track.muted ? '#ff4d4f' : undefined, background: track.muted ? '#fff1f0' : undefined }}
+                                            style={{ 
+                                                borderColor: track.muted ? token.colorError : undefined, 
+                                                color: track.muted ? token.colorError : undefined, 
+                                                background: track.muted ? token.colorErrorBg : undefined 
+                                            }}
                                             shape="circle"
                                             icon={<SoundOutlined />} 
                                             onClick={() => handleTrackChange(index, { muted: !track.muted })}

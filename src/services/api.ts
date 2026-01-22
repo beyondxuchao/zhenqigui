@@ -43,12 +43,20 @@ export const updateMovieStatus = async (id: number, status: string): Promise<voi
     return await invoke('update_movie_status', { id, status });
 };
 
+export const updateEpisodeStatus = async (movieId: number, episodeId: number, status: string): Promise<void> => {
+    return await invoke('update_episode_status', { movieId, episodeId, status });
+};
+
 export const getMovieDetails = async (id: number): Promise<Movie | null> => {
     return await invoke('get_movie_details', { id });
 };
 
 export const getTmdbDetails = async (tmdbId: number, mediaType?: string): Promise<any> => {
     return await invoke('get_tmdb_details', { tmdbId, mediaType });
+};
+
+export const getTmdbSeasonDetails = async (tvId: number, seasonNumber: number): Promise<any> => {
+    return await invoke('get_tmdb_season_details', { tvId, seasonNumber });
 };
 
 export const getConfig = async (): Promise<AppConfig> => {

@@ -250,7 +250,7 @@ const Transcoder: React.FC<TranscoderProps> = ({ initialFile }) => {
                     <Spin size="large" />
                     <Title level={4} style={{ marginTop: 24 }}>正在转换中...</Title>
                     <Paragraph type="secondary">请耐心等待，不要关闭窗口</Paragraph>
-                    <Progress percent={progress} status="active" strokeColor={{ from: '#108ee9', to: '#87d068' }} />
+                    <Progress percent={progress} status="active" strokeColor={{ from: token.colorPrimary, to: token.colorSuccess }} />
                 </>
              )}
              

@@ -80,11 +80,13 @@ impl Database {
                 category TEXT,
                 season_number INTEGER,
                 production_status TEXT,
+                runtime INTEGER,
                 matched_folders TEXT,
                 genres TEXT,
                 actors TEXT,
                 directors TEXT,
-                materials TEXT
+                materials TEXT,
+                episodes TEXT
             )",
             [],
         )?;
@@ -97,6 +99,14 @@ impl Database {
             
             if !columns.contains(&"season_number".to_string()) {
                 conn.execute("ALTER TABLE movies ADD COLUMN season_number INTEGER", [])?;
+            }
+
+            if !columns.contains(&"runtime".to_string()) {
+                conn.execute("ALTER TABLE movies ADD COLUMN runtime INTEGER", [])?;
+            }
+
+            if !columns.contains(&"episodes".to_string()) {
+                conn.execute("ALTER TABLE movies ADD COLUMN episodes TEXT", [])?;
             }
         }
 
@@ -178,9 +188,9 @@ impl Database {
             "INSERT INTO movies (
                 id, tmdb_id, title, original_title, overview, poster_path, release_date, 
                 vote_average, local_video_path, aliases, add_time, remark, viewing_date, 
-                category, season_number, production_status, matched_folders, genres, actors, directors, materials
+                category, season_number, production_status, runtime, matched_folders, genres, actors, directors, materials
             ) VALUES (
-                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21
+                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22
             )",
             params![
                 movie.id as i64,
@@ -199,6 +209,7 @@ impl Database {
                 movie.category,
                 movie.season_number,
                 movie.production_status,
+                movie.runtime,
                 serde_json::to_string(&movie.matched_folders)?,
                 serde_json::to_string(&movie.genres)?,
                 serde_json::to_string(&movie.actors)?,
@@ -279,17 +290,20 @@ impl Database {
         
         // Check duplicates by TMDB ID and Season Number if present
         if let Some(tmdb_id) = movie.tmdb_id {
-             let query = if movie.category.as_deref() == Some("tv") {
-                 "SELECT count(*) FROM movies WHERE tmdb_id = ?1 AND category = 'tv' AND (season_number = ?2 OR (season_number IS NULL AND ?2 IS NULL))"
+             let count: i64 = if movie.category.as_deref() == Some("tv") {
+                 conn.query_row(
+                     "SELECT count(*) FROM movies WHERE tmdb_id = ?1 AND category = 'tv' AND (season_number = ?2 OR (season_number IS NULL AND ?2 IS NULL))",
+                     params![tmdb_id as i64, movie.season_number],
+                     |row| row.get(0),
+                 )?
              } else {
-                 "SELECT count(*) FROM movies WHERE tmdb_id = ?1 AND category = 'movie'"
+                 conn.query_row(
+                     "SELECT count(*) FROM movies WHERE tmdb_id = ?1 AND category = 'movie'",
+                     params![tmdb_id as i64],
+                     |row| row.get(0),
+                 )?
              };
-
-             let count: i64 = conn.query_row(
-                 query,
-                 params![tmdb_id as i64, movie.season_number],
-                 |row| row.get(0),
-             )?;
+             
              if count > 0 {
                  return Err(anyhow::anyhow!("该影视（相同季度）已存在于库中"));
              }
@@ -299,9 +313,9 @@ impl Database {
             "INSERT INTO movies (
                 tmdb_id, title, original_title, overview, poster_path, release_date, 
                 vote_average, local_video_path, aliases, add_time, remark, viewing_date, 
-                category, season_number, production_status, matched_folders, genres, actors, directors, materials
+                category, season_number, production_status, runtime, matched_folders, genres, actors, directors, materials, episodes
             ) VALUES (
-                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20
+                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22
             )",
             params![
                 movie.tmdb_id.map(|id| id as i64),
@@ -319,11 +333,13 @@ impl Database {
                 movie.category,
                 movie.season_number,
                 movie.production_status,
+                movie.runtime,
                 serde_json::to_string(&movie.matched_folders)?,
                 serde_json::to_string(&movie.genres)?,
                 serde_json::to_string(&movie.actors)?,
                 serde_json::to_string(&movie.directors)?,
-                serde_json::to_string(&movie.materials)?
+                serde_json::to_string(&movie.materials)?,
+                serde_json::to_string(&movie.episodes)?
             ],
         )?;
         
@@ -340,6 +356,7 @@ impl Database {
         let actors_str: Option<String> = row.get("actors")?;
         let directors_str: Option<String> = row.get("directors")?;
         let materials_str: Option<String> = row.get("materials")?;
+        let episodes_str: Option<String> = row.get("episodes")?;
 
         Ok(Movie {
             id: row.get::<_, i64>("id")? as u64,
@@ -358,11 +375,13 @@ impl Database {
             category: row.get("category")?,
             season_number: row.get("season_number")?,
             production_status: row.get("production_status")?,
+            runtime: row.get("runtime")?,
             matched_folders: matched_folders_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default(),
             genres: genres_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default(),
             actors: actors_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default(),
             directors: directors_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default(),
             materials: materials_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default(),
+            episodes: episodes_str.and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default(),
         })
     }
 
@@ -393,9 +412,9 @@ impl Database {
                 tmdb_id = ?1, title = ?2, original_title = ?3, overview = ?4, poster_path = ?5, 
                 release_date = ?6, vote_average = ?7, local_video_path = ?8, aliases = ?9, 
                 add_time = ?10, remark = ?11, viewing_date = ?12, category = ?13, 
-                production_status = ?14, matched_folders = ?15, genres = ?16, actors = ?17, 
-                directors = ?18, materials = ?19
-             WHERE id = ?20",
+                production_status = ?14, runtime = ?15, matched_folders = ?16, genres = ?17, actors = ?18, 
+                directors = ?19, materials = ?20, episodes = ?21
+             WHERE id = ?22",
             params![
                 movie.tmdb_id.map(|id| id as i64),
                 movie.title,
@@ -411,11 +430,13 @@ impl Database {
                 movie.viewing_date,
                 movie.category,
                 movie.production_status,
+                movie.runtime,
                 serde_json::to_string(&movie.matched_folders)?,
                 serde_json::to_string(&movie.genres)?,
                 serde_json::to_string(&movie.actors)?,
                 serde_json::to_string(&movie.directors)?,
                 serde_json::to_string(&movie.materials)?,
+                serde_json::to_string(&movie.episodes)?,
                 movie.id as i64
             ],
         )?;

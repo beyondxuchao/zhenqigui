@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, Button, App, Flex, Typography, Space, Alert, Form, Select, Row, Col, Input, Steps, Badge } from 'antd';
+import { Card, Button, App, Flex, Typography, Space, Alert, Form, Select, Row, Col, Input, Steps, Badge, theme } from 'antd';
 import { InboxOutlined, SettingOutlined, ThunderboltOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -8,6 +8,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 const { Text, Title, Paragraph } = Typography;
 
 const UVRTool: React.FC = () => {
+  const { token } = theme.useToken();
   const { message } = App.useApp();
   
   // State
@@ -135,12 +136,12 @@ const UVRTool: React.FC = () => {
        <Flex vertical gap="small">
           <Flex align="center" gap="small">
              <Text style={{ width: 100 }}>Python 环境:</Text>
-             {envStatus.python ? <CheckCircleOutlined style={{ color: 'green' }} /> : <CloseCircleOutlined style={{ color: 'red' }} />}
+             {envStatus.python ? <CheckCircleOutlined style={{ color: token.colorSuccess }} /> : <CloseCircleOutlined style={{ color: token.colorError }} />}
              {!envStatus.python && <Text type="secondary">(请先安装 Python 3.9+ 并添加到 PATH)</Text>}
           </Flex>
           <Flex align="center" gap="small">
              <Text style={{ width: 100 }}>UVR 核心库:</Text>
-             {envStatus.audio_separator ? <CheckCircleOutlined style={{ color: 'green' }} /> : <CloseCircleOutlined style={{ color: 'red' }} />}
+             {envStatus.audio_separator ? <CheckCircleOutlined style={{ color: token.colorSuccess }} /> : <CloseCircleOutlined style={{ color: token.colorError }} />}
              {!envStatus.audio_separator && envStatus.python && (
                 <Button type="primary" size="small" loading={isInstalling} onClick={handleInstall}>
                    一键安装 ({envStatus.gpu ? 'GPU版' : 'CPU版'})
@@ -181,9 +182,9 @@ const UVRTool: React.FC = () => {
         />
 
         {currentStep === 0 && (
-           <Card style={{ textAlign: 'center', padding: 40, border: '2px dashed #d9d9d9', cursor: 'pointer' }} onClick={selectFile}>
+           <Card style={{ textAlign: 'center', padding: 40, border: `2px dashed ${token.colorBorder}`, cursor: 'pointer' }} onClick={selectFile}>
               <Paragraph>
-                 <InboxOutlined style={{ fontSize: 60, color: '#1677ff' }} />
+                 <InboxOutlined style={{ fontSize: 60, color: token.colorPrimary }} />
               </Paragraph>
               <Title level={4}>点击选择音频文件</Title>
               <Text type="secondary">支持 MP3, WAV, FLAC, M4A, OGG</Text>
@@ -234,8 +235,8 @@ const UVRTool: React.FC = () => {
               <div ref={logRef} style={{ 
                   height: 300, 
                   overflowY: 'auto', 
-                  backgroundColor: '#000', 
-                  color: '#0f0', 
+                  backgroundColor: token.colorFillTertiary, 
+                  color: token.colorSuccess, 
                   padding: 10, 
                   fontFamily: 'monospace',
                   borderRadius: 4
@@ -243,14 +244,14 @@ const UVRTool: React.FC = () => {
                  {logs.map((log, index) => (
                     <div key={index}>{log}</div>
                  ))}
-                 {logs.length === 0 && <div style={{ color: '#666' }}>等待开始...</div>}
+                 {logs.length === 0 && <div style={{ color: token.colorTextDescription }}>等待开始...</div>}
               </div>
            </Card>
         )}
         
         {currentStep === 2 && !isProcessing && (
            <div style={{ textAlign: 'center' }}>
-              <CheckCircleOutlined style={{ fontSize: 60, color: '#52c41a' }} />
+              <CheckCircleOutlined style={{ fontSize: 60, color: token.colorSuccess }} />
               <Title level={3}>分离完成!</Title>
               <Paragraph>文件已保存至: {outputDir}</Paragraph>
               <Button onClick={() => setCurrentStep(0)}>处理下一个</Button>

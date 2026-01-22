@@ -21,6 +21,7 @@ import { useApp } from '../context/appcontext';
 
 const Settings: React.FC = () => {
   const { token } = theme.useToken();
+  const { colorBorderSecondary, colorTextSecondary, colorWarning, colorSuccess, colorPrimary } = token;
   const [form] = Form.useForm();
   const { message } = App.useApp();
   const primaryColor = Form.useWatch('primary_color', form);
@@ -635,7 +636,7 @@ const Settings: React.FC = () => {
                                     {monitorFoldersSource.map((item) => (
                                         <div key={item} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
                                             <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
-                                                <FolderOpenOutlined style={{ marginRight: 8, color: '#faad14', flexShrink: 0 }} />
+                                                <FolderOpenOutlined style={{ marginRight: 8, color: colorWarning, flexShrink: 0 }} />
                                                 <span style={{ wordBreak: 'break-all' }}>{item}</span>
                                             </div>
                                             <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveMonitorFolderSource(item)} />
@@ -657,7 +658,7 @@ const Settings: React.FC = () => {
                                     {monitorFoldersFinished.map((item) => (
                                         <div key={item} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
                                             <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
-                                                <FolderOpenOutlined style={{ marginRight: 8, color: '#52c41a', flexShrink: 0 }} />
+                                                <FolderOpenOutlined style={{ marginRight: 8, color: colorSuccess, flexShrink: 0 }} />
                                                 <span style={{ wordBreak: 'break-all' }}>{item}</span>
                                             </div>
                                             <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveMonitorFolderFinished(item)} />
@@ -679,7 +680,7 @@ const Settings: React.FC = () => {
                                     {monitorFolders.map((item) => (
                                         <div key={item} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
                                             <div style={{ display: 'flex', alignItems: 'center', flex: 1, overflow: 'hidden' }}>
-                                                <FolderOpenOutlined style={{ marginRight: 8, color: '#1890ff', flexShrink: 0 }} />
+                                                <FolderOpenOutlined style={{ marginRight: 8, color: colorPrimary, flexShrink: 0 }} />
                                                 <span style={{ wordBreak: 'break-all' }}>{item}</span>
                                             </div>
                                             <Button type="text" danger icon={<DeleteOutlined />} onClick={() => handleRemoveMonitorFolder(item)} />
@@ -806,19 +807,19 @@ const Settings: React.FC = () => {
           onCancel={() => setPlayerModalVisible(false)}
           footer={null}
       >
-          <div style={{ border: '1px solid #f0f0f0', borderRadius: 8 }}>
+          <div style={{ border: `1px solid ${colorBorderSecondary}`, borderRadius: 8 }}>
               {detectedPlayers.length > 0 ? (
                   detectedPlayers.map((item, i) => (
-                      <div key={item.path} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderBottom: i === detectedPlayers.length - 1 ? 'none' : '1px solid #f0f0f0' }}>
+                      <div key={item.path} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', borderBottom: i === detectedPlayers.length - 1 ? 'none' : `1px solid ${colorBorderSecondary}` }}>
                           <div style={{ overflow: 'hidden', marginRight: 16 }}>
                               <div style={{ fontWeight: 500 }}>{item.name}</div>
-                              <div style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12, wordBreak: 'break-all' }}>{item.path}</div>
+                              <div style={{ color: colorTextSecondary, fontSize: 12, wordBreak: 'break-all' }}>{item.path}</div>
                           </div>
                           <Button type="primary" size="small" onClick={() => confirmSelectPlayer(item.path)}>选择</Button>
                       </div>
                   ))
               ) : (
-                  <div style={{ padding: '24px', textAlign: 'center', color: 'rgba(0,0,0,0.45)' }}>未检测到播放器</div>
+                  <div style={{ padding: '24px', textAlign: 'center', color: colorTextSecondary }}>未检测到播放器</div>
               )}
           </div>
       </Modal>

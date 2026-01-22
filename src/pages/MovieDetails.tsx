@@ -1,9 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { Typography, Card, Button, Table, Tag, Space, Breadcrumb, Statistic, Row, Col, Tabs, App, Spin, Tooltip, Input, Modal } from 'antd';
-import { EditOutlined, DeleteOutlined, CloseOutlined, PlayCircleOutlined, ExclamationCircleOutlined, DragOutlined, FolderOpenOutlined, LinkOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Typography, Card, Button, Table, Tag, Space, Breadcrumb, Statistic, Row, Col, Tabs, App, Spin, Tooltip, Input, Modal, Avatar, Progress, theme } from 'antd';
+import { 
+  EditOutlined, 
+  DeleteOutlined, 
+  DisconnectOutlined, 
+  PlayCircleOutlined, 
+  ExclamationCircleOutlined, 
+  DragOutlined, 
+  FolderOpenOutlined, 
+  LinkOutlined, 
+  ReloadOutlined, 
+  InfoCircleOutlined, 
+  CheckCircleOutlined, 
+  CheckCircleFilled,
+  CalendarOutlined,
+  ClockCircleOutlined,
+  StarFilled,
+  TeamOutlined,
+  RightOutlined
+} from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getMovieDetails, removeMaterialFromMovie, openFileWithPlayer, deleteMovie, updateMovie, getTmdbDetails, openDirectory, renameFileDirect, refreshMovieMaterials } from '../services/api';
-import { Movie, Material, Person } from '../types';
+import { getMovieDetails, removeMaterialFromMovie, openFileWithPlayer, deleteMovie, updateMovie, getTmdbDetails, getTmdbSeasonDetails, openDirectory, renameFileDirect, refreshMovieMaterials, updateEpisodeStatus } from '../services/api';
+import { Movie, Material, Person, Episode } from '../types';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { invoke } from '@tauri-apps/api/core';
 import LocalImage from '../components/localimage';
@@ -16,75 +34,161 @@ const MovieDetails: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { message, modal } = App.useApp();
+  const { 
+     token 
+   } = theme.useToken();
+  const { 
+    colorPrimary, 
+    colorText, 
+    colorTextSecondary, 
+    colorTextDisabled, 
+    colorFillSecondary,
+    colorBorderSecondary,
+    colorSuccess,
+    colorWarning
+  } = token;
   const [movie, setMovie] = useState<Movie | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [refreshingMaterials, setRefreshingMaterials] = useState(false);
   const [editing, setEditing] = useState(false);
   const [renamingFile, setRenamingFile] = useState<Material | null>(null);
   const [newFileName, setNewFileName] = useState('');
   const [fileExtension, setFileExtension] = useState('');
   const [isRenamingModalVisible, setIsRenamingModalVisible] = useState(false);
+  const [isEpisodesModalVisible, setIsEpisodesModalVisible] = useState(false);
+  const [isCastModalVisible, setIsCastModalVisible] = useState(false);
   
-  const fetchDetails = async () => {
+  const fetchDetails = async (forceRefresh = false, quiet = false) => {
     if (!id) return;
     try {
+      if (forceRefresh) {
+        setRefreshing(true);
+      } else if (!quiet) {
+        setLoading(true);
+      }
+
       let data = await getMovieDetails(parseInt(id));
       if (data) {
         // Render immediately with local data
         setMovie(data);
-        setLoading(false);
+        if (!forceRefresh && !quiet) setLoading(false);
 
-        // Check if we need to fetch cast/crew from TMDB in background
-        if (data.tmdb_id && (!data.actors || data.actors.length === 0)) {
-          try {
-             const tmdbData = await getTmdbDetails(data.tmdb_id, data.category || 'movie');
-             
-             let updated = false;
-             
-             if (tmdbData) {
-                // Update Cast & Crew
-                if (tmdbData.credits && (!data.actors || data.actors.length === 0)) {
-                    const cast: Person[] = tmdbData.credits.cast.slice(0, 10).map((p: any) => ({
-                        id: p.id,
-                        name: p.name,
-                        original_name: p.original_name,
-                        profile_path: p.profile_path ? `https://image.tmdb.org/t/p/h632${p.profile_path}` : undefined
-                    }));
-                    const crew: Person[] = tmdbData.credits.crew
-                        .filter((p: any) => p.job === 'Director')
-                        .map((p: any) => ({
-                            id: p.id,
-                            name: p.name,
-                            original_name: p.original_name,
-                            profile_path: p.profile_path ? `https://image.tmdb.org/t/p/h632${p.profile_path}` : undefined
-                        }));
-                    
-                    data.actors = cast;
-                    data.directors = crew;
-                    updated = true;
-                }
+        // Check if we need to fetch missing metadata from TMDB in background
+        // If forceRefresh is true, we always fetch from TMDB
+        const needsUpdate = forceRefresh || (data.tmdb_id && (
+            !data.runtime || 
+            !data.genres || data.genres.length === 0 || 
+            !data.actors || data.actors.length === 0 ||
+            (data.category === 'tv' && (!data.episodes || data.episodes.length === 0))
+        ));
 
-                // Update Genres
-                if (tmdbData.genres && (!data.genres || data.genres.length === 0)) {
-                    data.genres = tmdbData.genres.map((g: any) => g.name);
-                    updated = true;
-                }
-             }
+        if (needsUpdate && data.tmdb_id) {
+          const updateMetadata = async () => {
+            try {
+               const tmdbData = await getTmdbDetails(data.tmdb_id!, data.category || 'movie');
+               
+               let updated = false;
+               
+               if (tmdbData) {
+                  // ... (existing cast/genres/runtime logic)
+                  if (tmdbData.credits) {
+                      const cast: Person[] = tmdbData.credits.cast.slice(0, 10).map((p: any) => ({
+                          id: p.id,
+                          name: p.name,
+                          original_name: p.original_name,
+                          profile_path: p.profile_path ? `https://image.tmdb.org/t/p/h632${p.profile_path}` : undefined
+                      }));
+                      const crew: Person[] = tmdbData.credits.crew
+                          .filter((p: any) => p.job === 'Director')
+                          .map((p: any) => ({
+                              id: p.id,
+                              name: p.name,
+                              original_name: p.original_name,
+                              profile_path: p.profile_path ? `https://image.tmdb.org/t/p/h632${p.profile_path}` : undefined
+                          }));
+                      
+                      if (forceRefresh || !data.actors || data.actors.length === 0) {
+                          data.actors = cast;
+                          data.directors = crew;
+                          updated = true;
+                      }
+                  }
 
-             if (updated) {
-                 await updateMovie(data);
-                 setMovie({...data}); // Update UI with new data
-             }
-           } catch (e) {
-             console.error("Failed to fetch TMDB credits", e);
-             // Don't fail the whole load if TMDB fails
+                  if (tmdbData.genres && (forceRefresh || !data.genres || data.genres.length === 0)) {
+                      data.genres = tmdbData.genres.map((g: any) => g.name);
+                      updated = true;
+                  }
+
+                  if (tmdbData.runtime && (forceRefresh || !data.runtime)) {
+                      data.runtime = tmdbData.runtime;
+                      updated = true;
+                  }
+
+                  // NEW: Fetch episodes for TV shows
+                  if (data.category === 'tv' && data.season_number !== undefined && data.season_number !== null) {
+                      try {
+                          const seasonData = await getTmdbSeasonDetails(data.tmdb_id!, data.season_number);
+                          if (seasonData && seasonData.episodes) {
+                              const episodes: Episode[] = seasonData.episodes.map((e: any) => ({
+                                  id: e.id,
+                                  episode_number: e.episode_number,
+                                  name: e.name,
+                                  overview: e.overview,
+                                  air_date: e.air_date,
+                                  runtime: e.runtime,
+                                  still_path: e.still_path ? `https://image.tmdb.org/t/p/w300${e.still_path}` : undefined,
+                                  vote_average: e.vote_average
+                              }));
+                              
+                              // Check if we need to update episodes (if empty, force refresh, or missing vote_average)
+                              const shouldUpdate = 
+                                forceRefresh || 
+                                !data.episodes || 
+                                data.episodes.length === 0 ||
+                                (data.episodes.length > 0 && data.episodes.some(e => e.vote_average === undefined));
+
+                              if (shouldUpdate) {
+                                  data.episodes = episodes;
+                                  updated = true;
+                              }
+                          }
+                      } catch (err) {
+                          console.warn("Failed to fetch season details:", err);
+                      }
+                  }
+               }
+
+               if (updated) {
+                   await updateMovie(data);
+                   setMovie({...data}); // Update UI with new data
+                   if (forceRefresh) message.success('元数据已更新');
+               } else if (forceRefresh) {
+                   message.info('已经是最新元数据');
+               }
+             } catch (e) {
+               console.warn("Offline or TMDB fetch failed, using cached metadata:", e);
+               if (forceRefresh) message.error('刷新失败，请检查网络连接');
+            } finally {
+              if (forceRefresh) setRefreshing(false);
+            }
+          };
+
+          if (forceRefresh) {
+            await updateMetadata();
+          } else {
+            updateMetadata(); // Background, don't await
           }
+        } else if (forceRefresh) {
+           setRefreshing(false);
+           message.warning('该影视没有关联 TMDB ID，无法刷新');
         }
       }
     } catch (error) {
       console.error(error);
       message.error('获取详情失败');
-      setLoading(false);
+      if (forceRefresh) setRefreshing(false);
+      else if (!quiet) setLoading(false);
     }
   };
 
@@ -104,19 +208,54 @@ const MovieDetails: React.FC = () => {
       if (!movie) return;
       try {
           await removeMaterialFromMovie(movie.id, materialId);
+          
+          // Update local state without full refresh
+          const updatedMaterials = movie.materials?.filter(m => m.id !== materialId);
+          setMovie({ ...movie, materials: updatedMaterials });
+          
           message.success('已移除关联');
-          fetchDetails(); // Refresh
       } catch (e) {
           message.error('移除失败');
       }
   };
 
+  const handleToggleEpisodeStatus = async (episode: Episode) => {
+      if (!movie) return;
+      const newStatus = episode.production_status === 'made' ? 'unmade' : 'made';
+      try {
+          await updateEpisodeStatus(movie.id, episode.id, newStatus);
+          
+          // Update local state
+          const updatedEpisodes = movie.episodes?.map(e => {
+              if (e.id === episode.id) {
+                  return { ...e, production_status: newStatus };
+              }
+              return e;
+          });
+          setMovie({ ...movie, episodes: updatedEpisodes });
+          
+          message.success(`剧集状态已更新为: ${newStatus === 'made' ? '已制作' : '未制作'}`);
+      } catch (e) {
+          message.error('更新剧集状态失败: ' + e);
+      }
+  };
+
   const handleRefreshMaterials = async () => {
-      if (!id) return;
+      if (!id || !movie) return;
       try {
           setRefreshingMaterials(true);
           await refreshMovieMaterials(parseInt(id));
-          await fetchDetails();
+          
+          // Only fetch the updated movie data to get new materials list
+          // This avoids the full fetchDetails background logic
+          const updatedData = await getMovieDetails(parseInt(id));
+          if (updatedData) {
+              setMovie({
+                  ...movie,
+                  materials: updatedData.materials
+              });
+          }
+          
           message.success('素材已刷新');
       } catch (e) {
           message.error('刷新素材失败');
@@ -225,7 +364,7 @@ const MovieDetails: React.FC = () => {
         ellipsis: true,
         sorter: (a: Material, b: Material) => a.name.localeCompare(b.name)
     },
-    { title: '类别', dataIndex: 'category', key: 'category', width: 80, render: (text: string) => text === 'source' ? <Tag color="blue">原片</Tag> : text === 'finished' ? <Tag color="purple">成片</Tag> : '-' },
+    { title: '类别', dataIndex: 'category', key: 'category', width: 80, render: (text: string) => text === 'source' ? <Tag color="processing">原片</Tag> : text === 'finished' ? <Tag color="purple">成片</Tag> : '-' },
     { title: '类型', dataIndex: 'file_type', key: 'file_type', width: 100, render: (t: string) => <Tag>{t}</Tag> },
     { title: '路径', dataIndex: 'path', key: 'path', ellipsis: true },
     { 
@@ -275,7 +414,7 @@ const MovieDetails: React.FC = () => {
                         <Button type="link" size="small" icon={<FolderOpenOutlined />} onClick={() => handleOpenDirectory(record.path)} />
                     </Tooltip>
                     <Tooltip title="解除关联">
-                        <Button type="link" size="small" danger icon={<CloseOutlined />} onClick={() => handleRemoveMaterial(record.id)} />
+                        <Button type="link" size="small" danger icon={<DisconnectOutlined />} onClick={() => handleRemoveMaterial(record.id)} />
                     </Tooltip>
                 </Space>
             </div>
@@ -300,10 +439,41 @@ const MovieDetails: React.FC = () => {
   if (loading) return <Spin size="large" style={{ display: 'flex', justifyContent: 'center', marginTop: 100 }} />;
   if (!movie) return <div style={{ textAlign: 'center', marginTop: 100 }}>未找到该影视</div>;
 
+  const items = [
+    {
+        key: 'video',
+        label: '视频',
+        children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'video')} columns={columns} rowKey="path" onRow={onRow} />
+    },
+    {
+        key: 'audio',
+        label: '音频',
+        children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'audio')} columns={columns} rowKey="path" onRow={onRow} />
+    },
+    {
+        key: 'image',
+        label: '图片',
+        children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'image')} columns={columns} rowKey="path" onRow={onRow} />
+    },
+    {
+        key: 'doc',
+        label: '文档',
+        children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'doc')} columns={columns} rowKey="path" onRow={onRow} />
+    },
+    {
+        key: 'other',
+        label: '其他',
+        children: <Table dataSource={materials.filter((m: Material) => !['video', 'audio', 'image', 'doc'].includes(m.file_type))} columns={columns} rowKey="path" onRow={onRow} />
+    }
+  ];
+
   return (
     <div>
       <Breadcrumb style={{ marginBottom: 16 }} items={[
-        { title: '影视库', onClick: () => navigate('/'), className: 'cursor-pointer' },
+        { 
+          title: <span style={{ cursor: 'pointer' }}>影视库</span>, 
+          onClick: () => navigate('/') 
+        },
         { title: movie.title }
       ]} />
 
@@ -316,15 +486,108 @@ const MovieDetails: React.FC = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Title level={3}>{movie.title} <Text type="secondary" style={{ fontSize: 18 }}>{movie.original_title}</Text></Title>
                     <Space>
+                        <Button icon={<ReloadOutlined spin={refreshing} />} onClick={() => fetchDetails(true)} loading={refreshing}>刷新元数据</Button>
                         <Button icon={<LinkOutlined />} onClick={() => navigate(`/match/${movie.id}`)}>重新匹配</Button>
                         <Button icon={<EditOutlined />} onClick={() => setEditing(true)}>编辑信息</Button>
                         <Button danger icon={<DeleteOutlined />} onClick={handleDeleteMovie}>删除影视</Button>
                     </Space>
                 </div>
-                <Text type="secondary">{movie.overview}</Text>
+                <div style={{ marginBottom: 12 }}>
+                    <Space size={24} align="center">
+                        {movie.release_date && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <CalendarOutlined style={{ color: colorPrimary }} />
+                                <Text>{movie.release_date.split('-')[0]}</Text>
+                            </div>
+                        )}
+                        {movie.category === 'tv' && movie.season_number !== undefined && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Tag color="warning" style={{ margin: 0 }}>第 {movie.season_number} 季</Tag>
+                            </div>
+                        )}
+                        {movie.runtime && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <ClockCircleOutlined style={{ color: colorPrimary }} />
+                                <Text>{movie.runtime} 分钟</Text>
+                            </div>
+                        )}
+                        {movie.category === 'tv' && movie.episodes && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div 
+                                    onClick={() => setIsEpisodesModalVisible(true)}
+                                    style={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: 6, 
+                                        cursor: 'pointer',
+                                        padding: '2px 8px',
+                                        borderRadius: 4,
+                                        background: token.colorFillTertiary,
+                                        transition: 'all 0.2s'
+                                    }}
+                                    className="info-hover-item"
+                                >
+                                    <InfoCircleOutlined style={{ color: colorPrimary }} />
+                                    <Text>{movie.episodes.length} 集</Text>
+                                </div>
+                                {(() => {
+                                    const madeCount = movie.episodes.filter(e => e.production_status === 'made').length;
+                                    const percent = Math.round((madeCount / movie.episodes.length) * 100);
+                                    return (
+                                        <Tooltip title={`已制作: ${madeCount} / ${movie.episodes.length}`}>
+                                            <div style={{ width: 100, display: 'flex', alignItems: 'center' }}>
+                                                <Progress 
+                                                    percent={percent} 
+                                                    size="small" 
+                                                    strokeColor={percent === 100 ? colorSuccess : colorPrimary}
+                                                    showInfo={false}
+                                                    style={{ marginBottom: 0 }}
+                                                />
+                                                <Text type="secondary" style={{ fontSize: 12, marginLeft: 8, whiteSpace: 'nowrap' }}>{percent}%</Text>
+                                            </div>
+                                        </Tooltip>
+                                    );
+                                })()}
+                            </div>
+                        )}
+                        {movie.vote_average && (
+                            <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 8, 
+                                background: token.colorWarningBg, 
+                                padding: '4px 12px', 
+                                borderRadius: 16,
+                                border: `1px solid ${token.colorWarningBorder}`
+                            }}>
+                                <StarFilled style={{ color: colorWarning, fontSize: 16 }} />
+                                <Text style={{ color: colorWarning, fontWeight: 'bold', fontSize: 16 }}>{movie.vote_average.toFixed(1)}</Text>
+                            </div>
+                        )}
+                    </Space>
+                </div>
+                <div style={{ marginBottom: 16 }}>
+                    <Space size={[0, 8]} wrap>
+                        {movie.genres?.map(genre => (
+                            <Tag key={genre} color="processing" style={{ borderRadius: 12, padding: '0 12px' }}>{genre}</Tag>
+                        ))}
+                    </Space>
+                </div>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>{movie.overview}</Text>
                 
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24, marginBottom: 12 }}>
+                    <Title level={4} style={{ margin: 0 }}>演职人员</Title>
+                    <Button 
+                        type="link" 
+                        icon={<TeamOutlined />} 
+                        onClick={() => setIsCastModalVisible(true)}
+                        style={{ display: 'flex', alignItems: 'center' }}
+                    >
+                        查看全部 <RightOutlined style={{ fontSize: 12 }} />
+                    </Button>
+                </div>
                 {movie.actors && movie.actors.length > 0 && (
-                    <div style={{ marginTop: 24, overflowX: 'auto', display: 'flex', gap: 16, paddingBottom: 8 }}>
+                    <div style={{ overflowX: 'auto', display: 'flex', gap: 16, paddingBottom: 8 }}>
                         {movie.actors.map((person, index) => (
                             <div 
                                 key={`${person.id}-${index}`} 
@@ -338,7 +601,7 @@ const MovieDetails: React.FC = () => {
                                         borderRadius: '50%', 
                                         overflow: 'hidden', 
                                         marginBottom: 8,
-                                        background: '#f0f0f0',
+                                        background: colorFillSecondary,
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
@@ -348,7 +611,7 @@ const MovieDetails: React.FC = () => {
                                 >
                                     <LocalImage src={person.profile_path} alt={person.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 </div>
-                                <div style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.name}</div>
+                                <div style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: colorText }}>{person.name}</div>
                             </div>
                         ))}
                     </div>
@@ -365,39 +628,102 @@ const MovieDetails: React.FC = () => {
       </Card>
 
       <Card title="关联素材" extra={<Button type="link" icon={<ReloadOutlined />} loading={refreshingMaterials} onClick={handleRefreshMaterials}>刷新素材</Button>} style={{ marginTop: 24 }}>
-        <Spin spinning={refreshingMaterials}>
-            <Tabs 
-                defaultActiveKey="video"
-            items={[
-                {
-                    key: 'video',
-                    label: '视频',
-                    children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'video')} columns={columns} rowKey="path" onRow={onRow} />
-                },
-                {
-                    key: 'audio',
-                    label: '音频',
-                    children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'audio')} columns={columns} rowKey="path" onRow={onRow} />
-                },
-                {
-                    key: 'image',
-                    label: '图片',
-                    children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'image')} columns={columns} rowKey="path" onRow={onRow} />
-                },
-                {
-                    key: 'doc',
-                    label: '文档',
-                    children: <Table dataSource={materials.filter((m: Material) => m.file_type === 'doc')} columns={columns} rowKey="path" onRow={onRow} />
-                },
-                {
-                    key: 'other',
-                    label: '其他',
-                    children: <Table dataSource={materials.filter((m: Material) => !['video', 'audio', 'image', 'doc'].includes(m.file_type))} columns={columns} rowKey="path" onRow={onRow} />
-                }
-            ]}
-        />
-        </Spin>
+          <Tabs 
+              defaultActiveKey="video"
+              items={items}
+          />
       </Card>
+
+      <Modal
+          title={`${movie.title} - 第 ${movie.season_number} 季 剧集列表`}
+          open={isEpisodesModalVisible}
+          onCancel={() => setIsEpisodesModalVisible(false)}
+          footer={null}
+          width={800}
+          styles={{ body: { maxHeight: '70vh', overflowY: 'auto' } }}
+          destroyOnHidden
+      >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {movie.episodes && movie.episodes.map((episode) => (
+                <div key={episode.id} style={{ display: 'flex', gap: 16, padding: '12px 0', borderBottom: `1px solid ${colorBorderSecondary}` }}>
+                     <Avatar 
+                          shape="square" 
+                          size={100} 
+                          src={episode.still_path} 
+                          icon={<PlayCircleOutlined />}
+                          style={{ borderRadius: 4, flexShrink: 0 }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <Space>
+                                    <Text strong>第 {episode.episode_number} 集：{episode.name}</Text>
+                                    {episode.vote_average !== undefined && episode.vote_average > 0 && (
+                                        <Text style={{ color: colorWarning, fontSize: '12px', fontWeight: 'bold' }}>
+                                            ★ {episode.vote_average.toFixed(1)}
+                                        </Text>
+                                    )}
+                                    <Tooltip title={episode.production_status === 'made' ? '标记为未制作' : '标记为已制作'}>
+                                        <Button 
+                                            type="link" 
+                                            size="small" 
+                                            icon={episode.production_status === 'made' ? <CheckCircleFilled style={{ color: colorSuccess }} /> : <CheckCircleOutlined />} 
+                                            onClick={() => handleToggleEpisodeStatus(episode)}
+                                        />
+                                    </Tooltip>
+                                </Space>
+                                {episode.air_date && <Text type="secondary" style={{ fontSize: '12px' }}>{episode.air_date}</Text>}
+                          </div>
+                          <div>
+                                <div style={{ marginBottom: 4 }}>
+                                    {episode.runtime && <Tag>{episode.runtime} 分钟</Tag>}
+                                </div>
+                                <Text type="secondary" style={{ fontSize: '13px', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                    {episode.overview || '暂无剧情简介'}
+                                </Text>
+                          </div>
+                      </div>
+                </div>
+            ))}
+          </div>
+      </Modal>
+
+      <Modal
+          title={`演职人员 - ${movie.title}`}
+          open={isCastModalVisible}
+          onCancel={() => setIsCastModalVisible(false)}
+          footer={null}
+          width={800}
+          styles={{ body: { maxHeight: '70vh', overflowY: 'auto' } }}
+          destroyOnHidden
+      >
+          <Row gutter={[16, 16]}>
+              {[...(movie.directors || []), ...(movie.actors || [])].map((person: Person) => {
+                  const isDirector = movie.directors?.some(d => d.id === person.id);
+                  return (
+                      <Col key={`${person.id}-${isDirector}`} xs={12} sm={8} md={6} lg={6} xl={4} xxl={4}>
+                          <Card
+                              hoverable
+                              size="small"
+                              cover={
+                                  <div style={{ height: 180, overflow: 'hidden', background: colorFillSecondary }}>
+                                      <LocalImage 
+                                          src={person.profile_path} 
+                                          alt={person.name} 
+                                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                      />
+                                  </div>
+                              }
+                          >
+                              <Card.Meta 
+                                  title={<div title={person.name} style={{ fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.name}</div>}
+                                  description={isDirector ? <Tag color="warning">导演</Tag> : <Tag>演员</Tag>}
+                              />
+                          </Card>
+                      </Col>
+                  );
+              })}
+          </Row>
+      </Modal>
 
       <MovieEditModal
         visible={editing}
@@ -422,9 +748,9 @@ const MovieDetails: React.FC = () => {
                   onChange={(e) => setNewFileName(e.target.value)} 
                   placeholder="请输入新文件名"
               />
-              <Button type="default" disabled style={{ color: 'rgba(0, 0, 0, 0.45)', cursor: 'default', backgroundColor: '#fafafa', borderColor: '#d9d9d9' }}>{fileExtension}</Button>
+              <Button type="default" disabled style={{ color: colorTextDisabled, cursor: 'default', backgroundColor: colorFillSecondary, borderColor: colorBorderSecondary }}>{fileExtension}</Button>
           </Space.Compact>
-          <div style={{ marginTop: 8, color: '#999', fontSize: '12px' }}>
+          <div style={{ marginTop: 8, color: colorTextSecondary, fontSize: '12px' }}>
               原文件名: {renamingFile?.name}
           </div>
       </Modal>

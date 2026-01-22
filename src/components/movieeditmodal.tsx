@@ -90,6 +90,12 @@ const MovieEditModal: React.FC<MovieEditModalProps> = ({ visible, movie, onCance
         <Form.Item name="release_date" label="上映日期">
           <DatePicker style={{ width: '100%' }} />
         </Form.Item>
+        <Form.Item name="runtime" label="时长 (分钟)">
+          <InputNumber min={0} style={{ width: '100%' }} />
+        </Form.Item>
+        <Form.Item name="genres" label="类型 (标签)">
+          <Select mode="tags" style={{ width: '100%' }} placeholder="输入类型并回车" />
+        </Form.Item>
         <Form.Item name="vote_average" label="评分">
           <Rate allowHalf count={10} />
         </Form.Item>

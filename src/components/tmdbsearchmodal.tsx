@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { Modal, Input, Button, Card, Form, Row, Col, Tabs, Table, Tag, App } from 'antd';
-import { SearchOutlined, FolderOpenOutlined, CloudDownloadOutlined, CheckCircleOutlined, CloseCircleOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
-import { open } from '@tauri-apps/plugin-dialog';
-import { getTmdbDetails, searchTmdbMovies, scanForMovies } from '../services/api';
+import { Modal, Tabs, App } from 'antd';
+import { getTmdbDetails, searchTmdbMovies } from '../services/api';
 import { TmdbMovie, Movie, TmdbSeason } from '../types';
 
+// Sub-components
+import SearchInput from './tmdb/SearchInput';
+import ResultList from './tmdb/ResultList';
+import SeasonSelector from './tmdb/SeasonSelector';
+import FolderScan from './tmdb/FolderScan';
 
 interface TmdbSearchModalProps {
   visible: boolean;
@@ -26,7 +29,7 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
 
   // Folder Scan State
   const [scannedFiles, setScannedFiles] = useState<any[]>([]);
-  const [scanResults, setScanResults] = useState<any[]>([]); // { file: ScannedFile, match: TmdbMovie | null, status: 'pending' | 'matched' | 'failed' }
+  const [scanResults, setScanResults] = useState<any[]>([]); 
   const [scanning, setScanning] = useState(false);
 
   const handleAddClick = async (item: any) => {
@@ -37,7 +40,6 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
       try {
         const details = await getTmdbDetails(item.id, 'tv');
         if (details && details.seasons) {
-          // Include all seasons including specials (season_number 0)
           setSeasons(details.seasons);
         }
       } catch (error) {
@@ -54,18 +56,14 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
   const handleSeasonSelect = (season: TmdbSeason) => {
     if (!currentTvShow) return;
     
-    // Create a modified item with season info
     const baseName = currentTvShow.name || currentTvShow.title;
     const seasonSuffix = season.season_number === 0 ? '特别篇' : `第${season.season_number}季`;
     
     const itemWithSeason = {
       ...currentTvShow,
       season_number: season.season_number,
-      // Update title to new format: NameSeasonSuffix
       name: `${baseName}${seasonSuffix}`,
-      // Use season poster if available
       poster_path: season.poster_path || currentTvShow.poster_path,
-      // Use season air date
       first_air_date: season.air_date || currentTvShow.first_air_date,
       overview: season.overview || currentTvShow.overview
     };
@@ -82,7 +80,6 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
     setLoading(true);
     try {
       const data = await searchTmdbMovies(values.keyword, 1);
-      // Client-side filtering
       let filtered = data.filter((m: any) => m.media_type === 'movie' || m.media_type === 'tv');
       
       if (values.year) {
@@ -98,190 +95,9 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
     }
   };
 
-  const handleSelectFolder = async () => {
-    try {
-        const selected = await open({
-            directory: true,
-            multiple: false,
-        });
-
-        if (selected) {
-            setScanning(true);
-            const files = await scanForMovies([selected as string]);
-            setScannedFiles(files);
-            
-            // Initialize scan results
-            const initialResults = files.map(f => ({
-                file: f,
-                match: null,
-                status: 'pending'
-            }));
-            setScanResults(initialResults);
-            setScanning(false);
-        }
-    } catch (err) {
-        console.error(err);
-        message.error('扫描文件夹失败');
-        setScanning(false);
-    }
+  const onAddWithPromise = async (movie: any) => {
+    return onAdd(movie);
   };
-
-  const handleBatchMatch = async () => {
-      setScanning(true);
-      const newResults = [...scanResults];
-      
-      for (let i = 0; i < newResults.length; i++) {
-          const item = newResults[i];
-          if (item.status === 'matched') continue; // Skip already matched
-
-          try {
-              const data = await searchTmdbMovies(item.file.search_query);
-              const matches = data.filter((m: any) => m.media_type === 'movie' || m.media_type === 'tv');
-              if (matches && matches.length > 0) {
-                  // Prefer exact match if possible, otherwise first result
-                  newResults[i].match = matches[0];
-                  newResults[i].status = 'matched';
-              } else {
-                  newResults[i].status = 'failed';
-              }
-          } catch (e) {
-              console.error(`Failed to match ${item.file.name}`, e);
-              newResults[i].status = 'failed';
-          }
-          // Update UI periodically
-          setScanResults([...newResults]);
-      }
-      setScanning(false);
-  };
-
-  const handleImportMatched = async () => {
-      const matchedItems = scanResults.filter(r => r.status === 'matched' && r.match);
-      if (matchedItems.length === 0) {
-          message.warning('没有匹配成功的项目');
-          return;
-      }
-
-      let successCount = 0;
-      for (const item of matchedItems) {
-          try {
-              // Construct movie object same as manual add
-              const tmdbItem = item.match;
-              // We need to pass the local file path to onAdd/addMovie
-              // But currently onAdd expects a TmdbMovie object.
-              // Let's attach the local path to it
-              const movieToAdd = {
-                  ...tmdbItem,
-                  local_video_path: item.file.path // Custom field we'll handle in Home.tsx
-              };
-              await onAdd(movieToAdd);
-              successCount++;
-          } catch (e) {
-              console.error(`Failed to import ${item.file.name}`, e);
-          }
-      }
-      message.success(`成功导入 ${successCount} 部影视`);
-      // Optional: Clear or update list
-  };
-
-  const handleManualSearch = async (index: number, query: string) => {
-      try {
-          const data = await searchTmdbMovies(query, 1);
-          const matches = data.filter((m: any) => m.media_type === 'movie' || m.media_type === 'tv');
-          const newResults = [...scanResults];
-          if (matches && matches.length > 0) {
-              newResults[index].match = matches[0];
-              newResults[index].status = 'matched';
-          } else {
-              message.warning('未找到匹配结果');
-          }
-          setScanResults(newResults);
-      } catch (e) {
-          message.error('搜索失败');
-      }
-  };
-
-  const getPosterUrl = (item: any) => {
-      if (!item.poster_path) return 'https://via.placeholder.com/300x450';
-      if (item.poster_path.startsWith('http')) return item.poster_path;
-      return `https://image.tmdb.org/t/p/w300${item.poster_path}`;
-  };
-
-  const renderFolderScan = () => (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
-              <Button icon={<FolderOpenOutlined />} onClick={handleSelectFolder} loading={scanning}>
-                  选择文件夹扫描
-              </Button>
-              <Button type="primary" icon={<ReloadOutlined />} onClick={handleBatchMatch} disabled={scannedFiles.length === 0} loading={scanning}>
-                  开始自动匹配
-              </Button>
-              <Button type="primary" icon={<CloudDownloadOutlined />} onClick={handleImportMatched} disabled={scanResults.filter(r => r.status === 'matched').length === 0}>
-                  导入匹配项
-              </Button>
-              <span style={{ lineHeight: '32px', color: '#666', marginLeft: 8 }}>
-                  共找到 {scannedFiles.length} 个视频文件
-              </span>
-          </div>
-          
-          <div style={{ flex: 1, overflow: 'auto' }}>
-            <Table
-                dataSource={scanResults}
-                rowKey={(record) => record.file.path}
-                pagination={false}
-                size="small"
-                columns={[
-                    {
-                        title: '文件名 / 搜索词',
-                        dataIndex: 'file',
-                        key: 'file',
-                        render: (file, _, index) => (
-                            <div>
-                                <div style={{ fontWeight: 'bold' }}>{file.name}</div>
-                                <div style={{ fontSize: 12, color: '#999' }}>{file.path}</div>
-                                <Input.Search 
-                                    size="small" 
-                                    defaultValue={file.search_query}
-                                    onSearch={(value) => handleManualSearch(index, value)}
-                                    style={{ marginTop: 4, maxWidth: 300 }}
-                                    placeholder="修改搜索词重试"
-                                />
-                            </div>
-                        )
-                    },
-                    {
-                        title: '匹配结果',
-                        dataIndex: 'match',
-                        key: 'match',
-                        render: (match) => match ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <img 
-                                    src={getPosterUrl(match)} 
-                                    referrerPolicy="no-referrer"
-                                    style={{ width: 40, height: 60, objectFit: 'cover', borderRadius: 4 }} 
-                                />
-                                <div>
-                                    <div style={{ fontWeight: 'bold' }}>{match.title || match.name}</div>
-                                    <div style={{ fontSize: 12, color: '#999' }}>{match.release_date || match.first_air_date}</div>
-                                </div>
-                            </div>
-                        ) : <span style={{ color: '#ccc' }}>等待匹配</span>
-                    },
-                    {
-                        title: '状态',
-                        dataIndex: 'status',
-                        key: 'status',
-                        width: 80,
-                        render: (status) => {
-                            if (status === 'matched') return <Tag color="success" icon={<CheckCircleOutlined />}>成功</Tag>;
-                            if (status === 'failed') return <Tag color="error" icon={<CloseCircleOutlined />}>失败</Tag>;
-                            return <Tag color="default">待定</Tag>;
-                        }
-                    }
-                ]}
-            />
-          </div>
-      </div>
-  );
 
   return (
     <Modal
@@ -290,206 +106,58 @@ const TmdbSearchModal: React.FC<TmdbSearchModalProps> = ({ visible, onCancel, on
       onCancel={onCancel}
       footer={null}
       width={1000}
-      styles={{ body: { height: '70vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' } }}
+      styles={{ body: { height: '70vh', display: 'flex', flexDirection: 'column', padding: 0 } }}
       destroyOnHidden={true}
     >
-      <Tabs
-        activeKey={activeTab}
-        onChange={(key) => {
-            setActiveTab(key);
-            if (key !== 'folder') setResults([]);
-        }}
-        items={[
-            { label: 'TMDB 搜索', key: 'tmdb' },
-            { label: '文件夹导入', key: 'folder' },
-        ]}
-        style={{ marginBottom: 16 }}
-      />
-      
-      {activeTab === 'folder' ? renderFolderScan() : (
-      <>
-      <div style={{ marginBottom: 16 }}>
-        <Form layout="inline" onFinish={handleSearch} style={{ width: '100%', display: 'flex' }}>
-          <Form.Item name="keyword" style={{ flex: 1, marginRight: 8 }}>
-            <Input 
-                size="large" 
-                prefix={<SearchOutlined />} 
-                placeholder="输入影视名称搜索..." 
-            />
-          </Form.Item>
-          <Form.Item style={{ marginRight: 8 }}>
-            <Button type="primary" htmlType="submit" size="large" loading={loading} style={{ width: 80 }}>
-              搜索
-            </Button>
-          </Form.Item>
-        </Form>
+      <div style={{ padding: '16px 24px 0 24px' }}>
+        <Tabs
+          activeKey={activeTab}
+          onChange={(key) => {
+              setActiveTab(key);
+              if (key !== 'folder') setResults([]);
+          }}
+          items={[
+              { 
+                label: 'TMDB 搜索', 
+                key: 'tmdb',
+              },
+              { 
+                label: '文件夹导入', 
+                key: 'folder',
+              },
+          ]}
+          style={{ marginBottom: 0 }}
+          className="tmdb-modal-tabs"
+        />
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 4px' }}>
-          <Row gutter={[16, 16]}>
-            {results.map((item: any) => (
-              <Col xs={24} sm={12} md={12} lg={12} xl={8} xxl={8} key={item.id}>
-                <Card
-                  hoverable
-                  styles={{ body: { padding: 0 } }}
-                  style={{ 
-                    overflow: 'hidden', 
-                    borderRadius: 10, 
-                    border: '1px solid #f0f0f0',
-                    transition: 'all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1)'
-                  }}
-                >
-                    <div style={{ display: 'flex', height: 160, position: 'relative' }}>
-                        <div style={{ width: 106, flexShrink: 0, position: 'relative' }}>
-                            {item.media_type && (
-                                <div style={{ 
-                                    position: 'absolute', 
-                                    top: 0, 
-                                    left: 0, 
-                                    backgroundColor: item.media_type === 'movie' ? 'rgba(22, 119, 255, 0.85)' : 'rgba(82, 196, 26, 0.85)', 
-                                    color: 'white', 
-                                    padding: '2px 8px', 
-                                    fontSize: '11px', 
-                                    borderBottomRightRadius: '10px',
-                                    zIndex: 1,
-                                    fontWeight: 600,
-                                    backdropFilter: 'blur(4px)'
-                                }}>
-                                    {item.media_type === 'movie' ? '电影' : '剧集'}
-                                </div>
-                            )}
-                            <img 
-                                alt={item.title || item.name} 
-                                src={getPosterUrl(item)} 
-                                referrerPolicy="no-referrer"
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src = 'https://via.placeholder.com/300x450?text=No+Image';
-                                }}
-                            />
-                        </div>
-                        <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                            <div>
-                                <div style={{ 
-                                    fontSize: 15, 
-                                    fontWeight: 600, 
-                                    marginBottom: 6, 
-                                    lineHeight: '1.3em', 
-                                    color: '#262626',
-                                    maxHeight: '2.6em', 
-                                    overflow: 'hidden', 
-                                    textOverflow: 'ellipsis', 
-                                    display: '-webkit-box', 
-                                    WebkitLineClamp: 2, 
-                                    WebkitBoxOrient: 'vertical' 
-                                }} title={item.title || item.name}>
-                                    {item.title || item.name}
-                                </div>
-                                <div style={{ fontSize: 12, color: '#8c8c8c', marginBottom: 6 }}>
-                                    {item.release_date || item.first_air_date || '未知年份'}
-                                    {(item.original_title || item.original_name) && (item.original_title || item.original_name) !== (item.title || item.name) && (
-                                        <span style={{ marginLeft: 8, color: '#bfbfbf', fontStyle: 'italic' }}>
-                                            {item.original_title || item.original_name}
-                                        </span>
-                                    )}
-                                </div>
-                                {item.overview && (
-                                    <div style={{ 
-                                        fontSize: 12, 
-                                        color: '#595959', 
-                                        lineHeight: '1.5em',
-                                        maxHeight: '3em',
-                                        overflow: 'hidden', 
-                                        textOverflow: 'ellipsis', 
-                                        display: '-webkit-box', 
-                                        WebkitLineClamp: 2, 
-                                        WebkitBoxOrient: 'vertical',
-                                    }} title={item.overview}>
-                                        {item.overview}
-                                    </div>
-                                )}
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                <Button 
-                                    type="primary" 
-                                    size="small" 
-                                    icon={<PlusOutlined />}
-                                    onClick={() => handleAddClick(item)}
-                                    style={{ 
-                                        fontSize: '12px', 
-                                        borderRadius: '4px',
-                                        height: '28px',
-                                        padding: '0 10px'
-                                    }}
-                                >
-                                    添加
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </Card>
-              </Col>
-            ))}
-            {results.length === 0 && !loading && (
-                <div style={{ width: '100%', textAlign: 'center', marginTop: 40, color: '#999' }}>
-                    请输入关键词搜索添加
-                </div>
-            )}
-          </Row>
-      </div>
-      </>
-      )}
-
-      <Modal
-        title={`选择季度 - ${currentTvShow?.name || currentTvShow?.title}`}
-        open={seasonModalVisible}
-        onCancel={() => setSeasonModalVisible(false)}
-        footer={null}
-        width={600}
-        styles={{ body: { maxHeight: '60vh', overflowY: 'auto' } }}
-      >
-        {seasonsLoading ? (
-            <div style={{ textAlign: 'center', padding: '20px' }}>正在加载季度信息...</div>
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '0 24px 24px 24px' }}>
+        {activeTab === 'tmdb' ? (
+          <>
+            <SearchInput onSearch={handleSearch} loading={loading} />
+            <ResultList results={results} loading={loading} onAdd={handleAddClick} />
+          </>
         ) : (
-            <Row gutter={[16, 16]}>
-                {seasons.map((season) => (
-                    <Col span={12} key={season.id}>
-                        <Card 
-                            hoverable 
-                            size="small"
-                            onClick={() => handleSeasonSelect(season)}
-                            styles={{ body: { padding: 8 } }}
-                        >
-                            <div style={{ display: 'flex', gap: 12 }}>
-                                <img 
-                                    src={season.poster_path ? `https://image.tmdb.org/t/p/w154${season.poster_path}` : 'https://via.placeholder.com/154x231?text=No+Poster'} 
-                                    style={{ width: 60, height: 90, objectFit: 'cover', borderRadius: 4 }}
-                                />
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 'bold', fontSize: 14 }}>{season.name}</div>
-                                    <div style={{ fontSize: 12, color: '#8c8c8c', margin: '4px 0' }}>
-                                        {season.episode_count} 集 · {season.air_date?.split('-')[0] || '未知'}
-                                    </div>
-                                    <div style={{ 
-                                        fontSize: 12, 
-                                        color: '#595959', 
-                                        overflow: 'hidden', 
-                                        textOverflow: 'ellipsis', 
-                                        display: '-webkit-box', 
-                                        WebkitLineClamp: 2, 
-                                        WebkitBoxOrient: 'vertical' 
-                                    }}>
-                                        {season.overview || '暂无简介'}
-                                    </div>
-                                </div>
-                            </div>
-                        </Card>
-                    </Col>
-                ))}
-            </Row>
+          <FolderScan 
+            scannedFiles={scannedFiles}
+            scanResults={scanResults}
+            scanning={scanning}
+            setScannedFiles={setScannedFiles}
+            setScanResults={setScanResults}
+            setScanning={setScanning}
+            onAdd={onAddWithPromise}
+          />
         )}
-      </Modal>
+      </div>
+
+      <SeasonSelector 
+        visible={seasonModalVisible}
+        tvShow={currentTvShow}
+        seasons={seasons}
+        loading={seasonsLoading}
+        onCancel={() => setSeasonModalVisible(false)}
+        onSelect={handleSeasonSelect}
+      />
     </Modal>
   );
 };

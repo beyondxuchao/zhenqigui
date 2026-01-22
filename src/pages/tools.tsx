@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, Row, Col, Modal } from 'antd';
+import { Card, Row, Col, Modal, theme } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { listen } from '@tauri-apps/api/event';
 import { 
@@ -33,6 +33,7 @@ interface ToolItem {
 }
 
 const Tools: React.FC = () => {
+    const { token } = theme.useToken();
     const [activeTool, setActiveTool] = useState<ToolItem | null>(null);
     const [droppedFile, setDroppedFile] = useState<string | undefined>(undefined);
     const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -44,7 +45,7 @@ const Tools: React.FC = () => {
             id: 'renamer',
             title: '批量重命名',
             description: '批量修改文件名，支持替换、前后缀、正则等',
-            icon: <FileTextOutlined style={{ fontSize: 32, color: '#1677ff' }} />,
+            icon: <FileTextOutlined style={{ fontSize: 32, color: token.colorPrimary }} />,
             component: <FileRenamer />,
             width: 1000
         },
@@ -52,7 +53,7 @@ const Tools: React.FC = () => {
             id: 'mediainfo',
             title: '媒体信息检测',
             description: '查看视频编码、分辨率、码率等详细信息',
-            icon: <InfoCircleOutlined style={{ fontSize: 32, color: '#faad14' }} />,
+            icon: <InfoCircleOutlined style={{ fontSize: 32, color: token.colorWarning }} />,
             component: <MediaInfo />,
             width: 800
         },
@@ -60,7 +61,7 @@ const Tools: React.FC = () => {
             id: 'transcoder',
             title: '视频转码/封装',
             description: 'MKV 转 MP4，或转码为 H.264 格式',
-            icon: <SwapOutlined style={{ fontSize: 32, color: '#13c2c2' }} />,
+            icon: <SwapOutlined style={{ fontSize: 32, color: token.cyan }} />,
             component: <Transcoder />,
             width: 600
         },
@@ -68,7 +69,7 @@ const Tools: React.FC = () => {
             id: 'subtitle',
             title: '字幕提取',
             description: '提取 MKV 视频中的内封字幕文件',
-            icon: <FileTextOutlined style={{ fontSize: 32, color: '#722ed1' }} />,
+            icon: <FileTextOutlined style={{ fontSize: 32, color: token.purple }} />,
             component: <SubtitleTool />,
             width: 600
         },
@@ -76,7 +77,7 @@ const Tools: React.FC = () => {
             id: 'whisper',
             title: 'AI 字幕生成',
             description: '使用 OpenAI Whisper 自动识别语音生成字幕',
-            icon: <FontSizeOutlined style={{ fontSize: 32, color: '#eb2f96' }} />,
+            icon: <FontSizeOutlined style={{ fontSize: 32, color: token.magenta }} />,
             component: <WhisperTool />,
             width: 900
         },
@@ -84,7 +85,7 @@ const Tools: React.FC = () => {
             id: 'subtitleconverter',
             title: '字幕格式转换',
             description: 'ASS/SSA/SRT 等格式互转，或转换为纯文本',
-            icon: <FileTextOutlined style={{ fontSize: 32, color: '#eb2f96' }} />,
+            icon: <FileTextOutlined style={{ fontSize: 32, color: token.magenta }} />,
             component: <SubtitleConverter />,
             width: 600
         },
@@ -92,7 +93,7 @@ const Tools: React.FC = () => {
             id: 'audio',
             title: '音频分离',
             description: '提取视频中的音频为 MP3/WAV',
-            icon: <AudioOutlined style={{ fontSize: 32, color: '#eb2f96' }} />,
+            icon: <AudioOutlined style={{ fontSize: 32, color: token.magenta }} />,
             component: <AudioExtractor />,
             width: 600
         },
@@ -100,7 +101,7 @@ const Tools: React.FC = () => {
             id: 'uvr',
             title: 'UVR5 人声分离 (Beta)',
             description: '基于 Ultimate Vocal Remover 5 的顶级分离模型',
-            icon: <AudioOutlined style={{ fontSize: 32, color: '#ff4d4f' }} />,
+            icon: <AudioOutlined style={{ fontSize: 32, color: token.colorError }} />,
             component: <UVRTool />,
             width: 1000
         },
@@ -108,7 +109,7 @@ const Tools: React.FC = () => {
             id: 'audioprocessor',
             title: '音频处理',
             description: '音频强力限制 (Forced Limiter) 与增益调整',
-            icon: <AudioOutlined style={{ fontSize: 32, color: '#f5222d' }} />,
+            icon: <AudioOutlined style={{ fontSize: 32, color: token.red }} />,
             component: <AudioProcessor />,
             width: 1000
         },
@@ -116,11 +117,11 @@ const Tools: React.FC = () => {
             id: 'stemseparator',
             title: 'AI 人声分离',
             description: '分离人声、伴奏、鼓点、贝斯 (Demucs v4)',
-            icon: <AudioOutlined style={{ fontSize: 32, color: '#52c41a' }} />,
+            icon: <AudioOutlined style={{ fontSize: 32, color: token.colorSuccess }} />,
             component: <StemSeparator />,
             width: 800
         }
-    ], []);
+    ], [token]);
 
     const handleToolClick = (tool: ToolItem) => {
         if (tool.path) {

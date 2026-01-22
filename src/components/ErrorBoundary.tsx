@@ -60,7 +60,14 @@ class ErrorBoundary extends Component<Props, State> {
               </Paragraph>
               {this.state.errorInfo && (
                 <Paragraph>
-                   <pre style={{ maxHeight: 200, overflow: 'auto', background: '#f5f5f5', padding: 10 }}>
+                   <pre style={{ 
+                     maxHeight: 200, 
+                     overflow: 'auto', 
+                     background: 'rgba(150, 150, 150, 0.1)', 
+                     padding: 10,
+                     borderRadius: 4,
+                     fontSize: 12
+                   }}>
                      {this.state.errorInfo.componentStack}
                    </pre>
                 </Paragraph>
